@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>웹챠 카멜레온 V0.9 Alpha - 궁극의 은신</title>
+  <title>웹챠 카멜레온 V1.0 - 궁극의 은신 (정식버전)</title>
   <style>
     body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; touch-action: none; user-select: none; }
     
@@ -17,6 +17,7 @@
 
     #btn-copy { background: #3498db; color: white; }
     #btn-hide { background: #e74c3c; color: white; }
+    #btn-eye { background: #f1c40f; color: black; }
     #btn-restart { background: #2ecc71; color: white; }
     .active-tool { border: 2px solid #ffd32a !important; background: #555; color: #ffd32a; }
 
@@ -33,6 +34,7 @@
       transform: translate(-50%, -50%); z-index: 5;
       border: 2px dashed #e74c3c; background: rgba(231, 76, 60, 0.1);
       box-sizing: border-box; touch-action: none;
+      display: flex; justify-content: center; align-items: center;
     }
     
     #resize-handle {
@@ -42,27 +44,32 @@
 
     #doodle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; cursor: crosshair; }
 
+    /* 십자선(조준점) 및 눈알 */
+    #crosshair { position: absolute; color: #e74c3c; font-weight: bold; font-size: 18px; pointer-events: none; }
+    #face { position: absolute; z-index: 20; font-size: 24px; pointer-events: none; }
+
     /* 복사 완료 상태 */
     .copied { border: none !important; background-color: transparent !important; background-size: 100% 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
     .copied #resize-handle { display: none; }
+    .copied #crosshair { display: none; } /* 캡처 후 십자선 숨김 */
     
     .walking { animation: waddle 0.25s infinite alternate; }
     @keyframes waddle { 0% { margin-left: -2px; } 100% { margin-left: 2px; } }
 
-    /* 숨기 모드 (스케일 팽창 삭제 -> 위아래 1px 둥둥 떠다니기로 변경하여 화질 보존) */
+    /* 숨기 모드 (화질 보존형 숨쉬기) */
     .breathing { 
       box-shadow: none !important; 
       animation: breath 5s infinite ease-in-out; 
       pointer-events: auto !important; 
-      cursor: crosshair !important; /* 마우스 커서 스포일러 방지! */
+      cursor: crosshair !important;
     }
     @keyframes breath { 
       0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)); } 
-      50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)); } /* 1픽셀만 미세하게 움직임 */
+      50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)); }
     }
 
     /* 본체 등장 & 이펙트 */
-    #jelly-busted { position: absolute; display: none; font-size: 50px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; }
+    #jelly-busted { position: absolute; display: none; font-size: 50px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
     @keyframes popOut { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
     @keyframes tremble { 0%, 100% { margin-left: -3px; } 50% { margin-left: 3px; } }
 
@@ -80,7 +87,7 @@
 
   <div id="ui">
     <div id="ui-move">
-      <span style="font-size:13px; color:#aaa;">노란 점으로 캡처 크기 조절</span>
+      <span style="font-size:13px; color:#aaa;">노란 점으로 크기 조절</span>
       <button id="btn-copy" onclick="copyBackground()">📸 스캔 (Space)</button>
     </div>
     
@@ -91,7 +98,8 @@
       <input type="color" id="doodle-color" value="#000000">
       <button id="btn-pen" class="active-tool" onclick="setTool('pen')">🖌️</button>
       <button id="btn-eraser" onclick="setTool('eraser')">🧹</button>
-      <button id="btn-hide" onclick="startHiding()">🤫 완벽 주차!</button>
+      <button id="btn-eye" onclick="toggleEye()">👀 눈알</button>
+      <button id="btn-hide" onclick="startHiding()">🤫 완벽 주차 (Space)</button>
     </div>
 
     <div id="ui-seek">
@@ -107,6 +115,8 @@
     <canvas id="bg-canvas"></canvas>
     
     <div id="player">
+      <div id="crosshair">+</div>
+      <span id="face"></span>
       <canvas id="doodle-canvas"></canvas>
       <div id="resize-handle"></div>
     </div>
@@ -124,6 +134,7 @@
     const doodleCanvas = document.getElementById('doodle-canvas');
     const doodleCtx = doodleCanvas.getContext('2d');
     const rotSlider = document.getElementById('rot-slider');
+    const face = document.getElementById('face');
     
     let mode = 'move';
     let pX, pY, pWidth = 80, pHeight = 80;
@@ -138,10 +149,11 @@
     const isMobile = 'ontouchstart' in window;
     if (isMobile) {
       document.getElementById('joystick-zone').style.display = 'block';
-      document.getElementById('btn-copy').innerText = '📸 캡처';
+      document.getElementById('btn-copy').innerText = '📸 캡처 (터치)';
+      document.getElementById('btn-hide').innerText = '🤫 주차 (터치)';
     }
 
-    // --- 1. 맵 7종 ---
+    // --- 1. 맵 7종 (랜덤 생성) ---
     const mapGenerators = [
       function drawYoutube() {
         bgCtx.fillStyle = '#0f0f0f'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
@@ -217,7 +229,7 @@
     }
     window.addEventListener('resize', renderMap);
 
-    // --- 2. 초기화 (랜덤 맵 적용) ---
+    // --- 2. 초기화 ---
     window.initGame = () => {
       mode = 'move'; life = 3; rotation = 0; rotSlider.value = 0;
       pWidth = 80; pHeight = 80;
@@ -237,9 +249,9 @@
       player.style.setProperty('--rot', '0deg');
       
       doodleCanvas.style.display = 'none'; 
+      face.innerText = ''; // 눈알 초기화
       document.getElementById('jelly-busted').style.display = 'none';
       
-      // 이전 맵과 겹치지 않게 랜덤 맵 선택
       let nextMap;
       do { nextMap = Math.floor(Math.random() * mapGenerators.length); } 
       while (nextMap === currentMapIndex && mapGenerators.length > 1);
@@ -270,7 +282,15 @@
       player.style.width = `${pWidth}px`; player.style.height = `${pHeight}px`;
     }, {passive: false});
 
-    window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if(e.code === 'Space' && mode === 'move') copyBackground(); });
+    // ★ 스페이스바 만능 단축키 로직 통합 ★
+    window.addEventListener('keydown', e => { 
+      keys[e.key.toLowerCase()] = true; 
+      if(e.code === 'Space') {
+        e.preventDefault(); // 스크롤 방지
+        if (mode === 'move') copyBackground();
+        else if (mode === 'edit') startHiding();
+      }
+    });
     window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
     const joyZone = document.getElementById('joystick-zone');
@@ -303,11 +323,10 @@
       requestAnimationFrame(gameLoop);
     }
     
-    // 최초 실행 시 랜덤 맵 렌더링 호출
     renderMap();
     gameLoop();
 
-    // --- 4. 캡처 로직 ---
+    // --- 4. 캡처, 눈알 토글 로직 ---
     window.copyBackground = () => {
       if(mode !== 'move') return;
       
@@ -333,6 +352,10 @@
       doodleCtx.scale(dpr, dpr);
     };
 
+    window.toggleEye = () => {
+      face.innerText = face.innerText === '👀' ? '' : '👀';
+    };
+
     rotSlider.addEventListener('input', (e) => {
       rotation = e.target.value;
       player.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
@@ -351,6 +374,7 @@
 
     // --- 5. 술래 모드 및 Hit 판정 ---
     window.startHiding = () => {
+      if(mode !== 'edit') return;
       mode = 'seek';
       document.getElementById('ui-edit').style.display = 'none';
       document.getElementById('ui-seek').style.display = 'flex';
