@@ -3,177 +3,218 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>웹챠 카멜레온 V1.0 - 궁극의 은신 (정식버전)</title>
+  <title>웹챠 카멜레온 (Webcha Chameleon)</title>
   <style>
     body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; touch-action: none; user-select: none; }
     
-    /* 상단 UI */
-    #ui { padding: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 10; min-height: 45px; }
-    button, input[type="color"] { padding: 6px 12px; font-weight: bold; cursor: pointer; border-radius: 6px; border: none; font-size: 14px; transition: 0.1s; }
+    /* 상단 UI 바 */
+    #ui { padding: 8px 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 10; min-height: 48px; box-sizing: border-box; }
+    .ui-group { display: flex; gap: 8px; align-items: center; }
+    button, input { padding: 6px 12px; font-weight: bold; border-radius: 6px; border: none; font-size: 14px; transition: 0.1s; box-sizing: border-box; }
+    button { cursor: pointer; }
     button:active { transform: translateY(2px); }
     
-    #ui-move, #ui-edit, #ui-seek, #ui-gameover { display: flex; gap: 10px; align-items: center; }
-    #ui-edit, #ui-seek, #ui-gameover { display: none; }
+    .btn-main { background: #3498db; color: white; }
+    .btn-action { background: #e74c3c; color: white; }
+    .btn-sub { background: #555; color: white; }
+    .active-tool { border: 2px solid #ffd32a !important; background: #666; color: #ffd32a; }
 
-    #btn-copy { background: #3498db; color: white; }
-    #btn-hide { background: #e74c3c; color: white; }
-    #btn-eye { background: #f1c40f; color: black; }
-    #btn-restart { background: #2ecc71; color: white; }
-    .active-tool { border: 2px solid #ffd32a !important; background: #555; color: #ffd32a; }
+    .control-box { display: flex; align-items: center; gap: 5px; background: #333; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; }
+    #taunt-input { width: 140px; padding: 5px; background: #fff; color: #111; border: 2px solid #e74c3c; }
 
-    .control-box { display: flex; align-items: center; gap: 5px; background: #444; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; }
-    .control-box input[type="range"] { width: 80px; }
-
-    /* 맵 컨테이너 (술래 모드 시 항상 십자선 커서) */
+    /* 맵 캔버스 영역 */
     #map-container { position: relative; width: 100vw; height: calc(100vh - 65px); overflow: hidden; background: #fff; cursor: crosshair; }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-    /* 플레이어 & 뷰파인더 */
-    #player {
-      position: absolute; width: 80px; height: 80px;
-      transform: translate(-50%, -50%); z-index: 5;
-      border: 2px dashed #e74c3c; background: rgba(231, 76, 60, 0.1);
-      box-sizing: border-box; touch-action: none;
-      display: flex; justify-content: center; align-items: center;
+    /* 플레이어 & 기존 주차 오브젝트 */
+    .player-obj {
+      position: absolute; transform: translate(-50%, -50%); z-index: 5;
+      box-sizing: border-box; display: flex; justify-content: center; align-items: center;
+      background-size: 100% 100%; pointer-events: none;
     }
-    
+    #local-player { border: 2px dashed #e74c3c; background: rgba(231, 76, 60, 0.1); }
     #resize-handle {
-      position: absolute; right: -5px; bottom: -5px; width: 20px; height: 20px;
-      background: #f1c40f; border: 2px solid #333; border-radius: 50%; cursor: se-resize; z-index: 10;
+      position: absolute; right: -6px; bottom: -6px; width: 18px; height: 18px;
+      background: #f1c40f; border: 2px solid #222; border-radius: 50%; cursor: se-resize; z-index: 10;
     }
 
     #doodle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; cursor: crosshair; }
-
-    /* 십자선(조준점) 및 눈알 */
     #crosshair { position: absolute; color: #e74c3c; font-weight: bold; font-size: 18px; pointer-events: none; }
-    #face { position: absolute; z-index: 20; font-size: 24px; pointer-events: none; }
+    .obj-face { position: absolute; z-index: 20; font-size: 22px; pointer-events: none; }
 
-    /* 복사 완료 상태 */
-    .copied { border: none !important; background-color: transparent !important; background-size: 100% 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-    .copied #resize-handle { display: none; }
-    .copied #crosshair { display: none; } /* 캡처 후 십자선 숨김 */
-    
+    .copied { border: none !important; background-color: transparent !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .copied #resize-handle, .copied #crosshair { display: none; }
     .walking { animation: waddle 0.25s infinite alternate; }
     @keyframes waddle { 0% { margin-left: -2px; } 100% { margin-left: 2px; } }
 
-    /* 숨기 모드 (화질 보존형 숨쉬기) */
-    .breathing { 
-      box-shadow: none !important; 
-      animation: breath 5s infinite ease-in-out; 
-      pointer-events: auto !important; 
-      cursor: crosshair !important;
-    }
+    /* 숨쉬기 애니메이션 (화질 보존용 1px 무빙) */
+    .breathing { box-shadow: none !important; animation: breath 5s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
     @keyframes breath { 
       0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)); } 
-      50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)); }
+      50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)); } 
     }
 
-    /* 본체 등장 & 이펙트 */
-    #jelly-busted { position: absolute; display: none; font-size: 50px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
+    /* 검거 연출 */
+    .jelly-busted { position: absolute; font-size: 45px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
     @keyframes popOut { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
     @keyframes tremble { 0%, 100% { margin-left: -3px; } 50% { margin-left: 3px; } }
 
     .shake-screen { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
     @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, -4px, 0); } }
-    .floating-text { position: absolute; font-weight: 900; font-size: 26px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; white-space: nowrap; }
+    .floating-text { position: absolute; font-weight: 900; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; white-space: nowrap; }
     @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
 
-    /* 조이스틱 */
-    #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 100px; height: 100px; background: rgba(0,0,0,0.15); border-radius: 50%; z-index: 20; display: none; }
+    /* 결과 모달 */
+    #result-modal { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 999; }
+    .modal-card { background: #222; border: 3px solid #ff4757; border-radius: 12px; padding: 25px; max-width: 90vw; text-align: center; }
+    .taunt-text { font-size: 32px; font-weight: 900; color: #ff4757; margin-bottom: 15px; word-break: keep-all; }
+
+    /* 모바일 조이스틱 */
+    #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 100px; height: 100px; background: rgba(0,0,0,0.2); border-radius: 50%; z-index: 20; display: none; }
     #joystick-knob { position: absolute; top: 30px; left: 30px; width: 40px; height: 40px; background: rgba(255,255,255,0.6); border-radius: 50%; }
   </style>
 </head>
 <body>
 
   <div id="ui">
-    <div id="ui-move">
-      <span style="font-size:13px; color:#aaa;">노란 점으로 크기 조절</span>
-      <button id="btn-copy" onclick="copyBackground()">📸 스캔 (Space)</button>
+    <div style="font-weight:900; color:#3498db; font-size:16px;">🦎 웹챠 카멜레온</div>
+
+    <div id="ui-move" class="ui-group" style="display:none;">
+      <span style="font-size:12px; color:#aaa;" id="overlap-warning">노란 점: 크기조절</span>
+      <button class="btn-main" onclick="window.copyBackground()">📸 스캔 (Space)</button>
     </div>
     
-    <div id="ui-edit">
-      <div class="control-box">
-        🔄 <input type="range" id="rot-slider" min="0" max="360" value="0">
-      </div>
-      <input type="color" id="doodle-color" value="#000000">
-      <button id="btn-pen" class="active-tool" onclick="setTool('pen')">🖌️</button>
-      <button id="btn-eraser" onclick="setTool('eraser')">🧹</button>
-      <button id="btn-eye" onclick="toggleEye()">👀 눈알</button>
-      <button id="btn-hide" onclick="startHiding()">🤫 완벽 주차 (Space)</button>
+    <div id="ui-edit" class="ui-group" style="display:none;">
+      <div class="control-box">🔄 <input type="range" id="rot-slider" min="0" max="360" value="0" style="width:60px;"></div>
+      <button class="btn-sub" onclick="window.toggleEye()">👀</button>
+      <input type="text" id="taunt-input" placeholder="실패 시 인성질 멘트" maxlength="25">
+      <button class="btn-action" onclick="window.finishHiding()">🤫 주차 완료 (Space)</button>
     </div>
 
-    <div id="ui-seek">
-      <span style="color:#e74c3c; font-size:18px; font-weight:bold;">❤️ <span id="life">3</span></span> | 
-      <span style="color:#f1c40f; font-size:18px; font-weight:bold;">⏱️ <span id="time">0.00</span>초</span>
+    <div id="ui-share" class="ui-group" style="display:none;">
+      <span id="room-status-text" style="color:#2ecc71; font-size:13px; font-weight:bold;"></span>
+      <button class="btn-main" onclick="window.copyLink()">🔗 방 링크 복사</button>
+      <button class="btn-action" onclick="window.startPartySeek()">🔍 술래 시작</button>
     </div>
-    <div id="ui-gameover">
-      <button id="btn-restart" onclick="initGame()">🔄 랜덤 맵 다시하기</button>
+
+    <div id="ui-seek" class="ui-group" style="display:none;">
+      <span style="color:#e74c3c; font-size:16px; font-weight:bold;">❤️ <span id="life">3</span></span>
+      <span style="color:#2ecc71; font-size:16px; font-weight:bold;">남은 타겟: <span id="target-count">1</span></span>
+      <span style="color:#f1c40f; font-size:16px; font-weight:bold;">⏱️ <span id="time">0.00</span>초</span>
     </div>
   </div>
 
   <div id="map-container">
     <canvas id="bg-canvas"></canvas>
     
-    <div id="player">
+    <div id="local-player" class="player-obj">
       <div id="crosshair">+</div>
-      <span id="face"></span>
+      <span id="local-face" class="obj-face"></span>
       <canvas id="doodle-canvas"></canvas>
       <div id="resize-handle"></div>
     </div>
-    
-    <div id="jelly-busted">😳💦</div>
+
     <div id="joystick-zone"><div id="joystick-knob"></div></div>
   </div>
 
-  <script>
+  <div id="result-modal">
+    <div class="modal-card">
+      <div id="result-taunt" class="taunt-text"></div>
+      <div id="result-time" style="font-size:18px; color:#fff; margin-bottom: 20px;"></div>
+      <button class="btn-main" onclick="location.href=location.pathname" style="padding:10px 20px; font-size:16px;">새 게임 만들기</button>
+    </div>
+  </div>
+
+  <!-- Firebase 최신 모듈 연동 및 게임 로직 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
+
+    // 1. 대표님 Firebase Config 적용 (databaseURL 추가)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDYmOC4OiW90_8ee0ndpO6xSRSBKJENlws",
+      authDomain: "webcchachameleon.firebaseapp.com",
+      databaseURL: "https://webcchachameleon-default-rtdb.firebaseio.com", 
+      projectId: "webcchachameleon",
+      storageBucket: "webcchachameleon.firebasestorage.app",
+      messagingSenderId: "1027865688324",
+      appId: "1:1027865688324:web:66dc784418c4a479a37851"
+    };
+
+    let db = null;
+    try {
+      const app = initializeApp(firebaseConfig);
+      db = getDatabase(app);
+      console.log("Firebase 연동 완료!");
+    } catch(e) {
+      console.warn("Firebase Init Error! 로컬 스토리지 테스트 모드로 전환됩니다.", e);
+    }
+
+    // 2. 전역 변수
     const mapContainer = document.getElementById('map-container');
     const bgCanvas = document.getElementById('bg-canvas');
     const bgCtx = bgCanvas.getContext('2d');
-    const player = document.getElementById('player');
+    const localPlayer = document.getElementById('local-player');
     const resizeHandle = document.getElementById('resize-handle');
+    const rotSlider = document.getElementById('rot-slider');
+    const localFace = document.getElementById('local-face');
     const doodleCanvas = document.getElementById('doodle-canvas');
     const doodleCtx = doodleCanvas.getContext('2d');
-    const rotSlider = document.getElementById('rot-slider');
-    const face = document.getElementById('face');
     
-    let mode = 'move';
+    let mode = 'move'; 
     let pX, pY, pWidth = 80, pHeight = 80;
-    let vX = 0, vY = 0;
-    let rotation = 0;
+    let vX = 0, vY = 0, rotation = 0;
     const speed = 4;
     let keys = {};
     let life = 3, startTime, timerInterval;
     
-    const dpr = window.devicePixelRatio || 1; 
+    let currentRoomId = null;
+    let currentMapIndex = 0;
+    let roomSeed = 1;
+    let existingHiders = []; // 이미 방에 주차된 카멜레온 리스트
+    let tauntMessage = "눈 장식이냐 ㅋㅋ 젤리 승리!";
 
+    const dpr = window.devicePixelRatio || 1;
     const isMobile = 'ontouchstart' in window;
     if (isMobile) {
       document.getElementById('joystick-zone').style.display = 'block';
-      document.getElementById('btn-copy').innerText = '📸 캡처 (터치)';
-      document.getElementById('btn-hide').innerText = '🤫 주차 (터치)';
+      document.getElementById('btn-copy').innerText = '📸 스캔';
     }
 
-    // --- 1. 맵 7종 (랜덤 생성) ---
+    // 3. 동일한 맵 시드 렌더링
+    function seededRandom() {
+      let x = Math.sin(roomSeed++) * 10000;
+      return x - Math.floor(x);
+    }
+
     const mapGenerators = [
       function drawYoutube() {
         bgCtx.fillStyle = '#0f0f0f'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
         for(let i=0; i<6; i++) {
           let x = (i%2)*(bgCanvas.width/dpr/2) + 10, y = Math.floor(i/2)*220 + 20;
-          bgCtx.fillStyle = '#333'; bgCtx.fillRect(x, y, (bgCanvas.width/dpr/2)-20, 140);
+          bgCtx.fillStyle = '#222'; bgCtx.fillRect(x, y, (bgCanvas.width/dpr/2)-20, 140);
           bgCtx.fillStyle = 'rgba(0,0,0,0.8)'; bgCtx.fillRect(x+ (bgCanvas.width/dpr/2)-70, y+110, 45, 20);
           bgCtx.fillStyle = '#fff'; bgCtx.font = '12px sans-serif'; bgCtx.fillText('10:24', x+ (bgCanvas.width/dpr/2)-65, y+125);
-          bgCtx.beginPath(); bgCtx.arc(x+25, y+170, 15, 0, Math.PI*2); bgCtx.fillStyle='#aaa'; bgCtx.fill();
-          bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('웹챠 카멜레온 레전드 플레이', x+50, y+165);
+          bgCtx.beginPath(); bgCtx.arc(x+25, y+170, 15, 0, Math.PI*2); bgCtx.fillStyle='#ff4757'; bgCtx.fill();
+          bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('웹챠 카멜레온 9인 합방 레전드', x+50, y+165);
         }
       },
       function drawInsta() {
         bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
         let cx = bgCanvas.width/dpr/2 - 150;
         bgCtx.beginPath(); bgCtx.arc(cx+30, 40, 20, 0, Math.PI*2); bgCtx.fillStyle='#ff7675'; bgCtx.fill();
-        bgCtx.fillStyle = '#2d3436'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('jelly_official', cx+60, 45);
+        bgCtx.fillStyle = '#2d3436'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('chameleon_official', cx+60, 45);
         bgCtx.fillStyle = '#dfe6e9'; bgCtx.fillRect(cx, 70, 300, 300);
         bgCtx.fillStyle = '#ff4757'; bgCtx.font = '24px sans-serif'; bgCtx.fillText('❤️ 💬 ↗️', cx+10, 400);
-        bgCtx.fillStyle = '#2d3436'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('좋아요 14,230개', cx+10, 425);
+        bgCtx.fillStyle = '#2d3436'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('좋아요 99,999개', cx+10, 425);
+      },
+      function drawChat() {
+        bgCtx.fillStyle = '#b2c7d9'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
+        for(let i=0; i<6; i++) {
+          let y = 50 + i*70;
+          if (i%2===0) { bgCtx.fillStyle = '#fff'; bgCtx.fillRect(20, y, 180, 40); bgCtx.fillStyle = '#333'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('술래 누구냐?', 30, y+25); } 
+          else { bgCtx.fillStyle = '#ffeb33'; bgCtx.fillRect(bgCanvas.width/dpr - 200, y, 180, 40); bgCtx.fillStyle = '#333'; bgCtx.fillText('절대 못 찾을 곳에 숨음 ㅋㅋ', bgCanvas.width/dpr - 190, y+25); }
+        }
       },
       function drawDashboard() {
         bgCtx.fillStyle = '#1e272e'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
@@ -182,22 +223,14 @@
         bgCtx.beginPath(); bgCtx.moveTo(cx, cy); bgCtx.arc(cx, cy, 80, Math.PI*1.2, Math.PI*2); bgCtx.fillStyle = '#fed330'; bgCtx.fill();
         for(let i=0; i<8; i++) {
           bgCtx.fillStyle = ['#fc5c65','#fd9644','#fed330','#26de81'][i%4];
-          bgCtx.fillRect(250 + i*40, 220 - Math.random()*150, 25, 200);
-        }
-      },
-      function drawChat() {
-        bgCtx.fillStyle = '#b2c7d9'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
-        for(let i=0; i<6; i++) {
-          let y = 50 + i*70;
-          if (i%2===0) { bgCtx.fillStyle = '#fff'; bgCtx.fillRect(20, y, 180, 40); bgCtx.fillStyle = '#333'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('오늘 점심 뭐먹지?', 30, y+25); } 
-          else { bgCtx.fillStyle = '#ffeb33'; bgCtx.fillRect(bgCanvas.width/dpr - 200, y, 180, 40); bgCtx.fillStyle = '#333'; bgCtx.fillText('치킨 어떰 ㅋㅋ', bgCanvas.width/dpr - 190, y+25); }
+          bgCtx.fillRect(250 + i*40, 220 - seededRandom()*150, 25, 200);
         }
       },
       function drawNews() {
         bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
-        bgCtx.fillStyle = '#333'; bgCtx.font = 'bold 24px sans-serif'; bgCtx.fillText('IT 속보: 젤리 탈출 사건', 20, 50);
-        bgCtx.fillStyle = '#666'; bgCtx.font = '14px sans-serif';
-        for(let i=0; i<10; i++) bgCtx.fillText('엄청난 퀄리티의 위장술로 모두를 속인 젤리가 화제입니다...', 20, 100 + i*30);
+        bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 24px sans-serif'; bgCtx.fillText('[단독] 9인의 위장 젤리, 완벽 잠입', 20, 50);
+        bgCtx.fillStyle = '#555'; bgCtx.font = '14px sans-serif';
+        for(let i=0; i<10; i++) bgCtx.fillText('웹챠 카멜레온의 위장술에 전 세계 술래들이 패닉에 빠졌습니다...', 20, 100 + i*30);
       },
       function drawShop() {
         bgCtx.fillStyle = '#f8f9fa'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
@@ -205,93 +238,308 @@
           let x = (i%3)*130 + 20, y = Math.floor(i/3)*180 + 50;
           bgCtx.fillStyle = '#dfe4ea'; bgCtx.fillRect(x, y, 110, 110);
           bgCtx.fillStyle = '#ff4757'; bgCtx.fillRect(x, y+120, 110, 30);
-          bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 13px sans-serif'; bgCtx.fillText('구매하기', x+28, y+140);
-        }
-      },
-      function drawCode() {
-        bgCtx.fillStyle = '#282c34'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
-        bgCtx.font = '15px monospace';
-        const codeLines = ['function hack() {', '  return "You cant find me";', '}', 'console.log(hack());'];
-        for(let i=0; i<15; i++) {
-          bgCtx.fillStyle = ['#e06c75', '#98c379', '#e5c07b', '#56b6c2'][i%4];
-          bgCtx.fillText(codeLines[i%4], 40, 50 + i*25);
+          bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 13px sans-serif'; bgCtx.fillText('결제하기', x+28, y+140);
         }
       }
     ];
-
-    let currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
 
     function renderMap() {
       bgCanvas.width = mapContainer.clientWidth * dpr; 
       bgCanvas.height = mapContainer.clientHeight * dpr;
       bgCtx.scale(dpr, dpr); 
-      mapGenerators[currentMapIndex]();
+      roomSeed = currentMapIndex + 100;
+      mapGenerators[currentMapIndex % mapGenerators.length]();
     }
     window.addEventListener('resize', renderMap);
 
-    // --- 2. 초기화 ---
-    window.initGame = () => {
-      mode = 'move'; life = 3; rotation = 0; rotSlider.value = 0;
+    // 4. 모드 분기 (URL 파라미터)
+    const urlParams = new URLSearchParams(window.location.search);
+    currentRoomId = urlParams.get('room');
+    const isSeekMode = urlParams.get('mode') === 'seek';
+
+    async function initializeSystem() {
+      if (currentRoomId) {
+        if (isSeekMode) await initSeeker(currentRoomId);
+        else await initJoinHider(currentRoomId);
+      } else {
+        initHostHider();
+      }
+    }
+
+    // 5. 방장 (첫 출제자)
+    function initHostHider() {
+      currentRoomId = Math.random().toString(36).substr(2, 6);
+      currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
+      existingHiders = [];
+      setupHiderUI();
+    }
+
+    // 6. 참가자 (추가 주차 - 겹침 방지 렌더링)
+    async function initJoinHider(id) {
+      let roomData = null;
+      if (db) {
+        const snap = await get(ref(db, 'rooms/' + id));
+        if (snap.exists()) roomData = snap.val();
+      } else {
+        const local = localStorage.getItem('room_' + id);
+        if (local) roomData = JSON.parse(local);
+      }
+
+      if (roomData) {
+        currentMapIndex = roomData.mapIndex;
+        existingHiders = roomData.list || [];
+        
+        if (existingHiders.length >= 9) {
+          alert("방이 꽉 찼습니다! (최대 9명). 자동으로 술래 모드로 전환합니다.");
+          return initSeeker(id);
+        }
+        
+        setupHiderUI();
+        renderExistingHiders(existingHiders); // 내가 숨기 전에 앞사람들 위치 보여주기
+      } else {
+        alert("존재하지 않거나 만료된 방입니다. 새 방을 팝니다.");
+        initHostHider();
+      }
+    }
+
+    function renderExistingHiders(list) {
+      list.forEach((data, idx) => {
+        const el = document.createElement('div');
+        el.className = 'player-obj copied breathing';
+        el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
+        el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
+        el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
+        el.style.setProperty('--rot', `${data.rotation}deg`);
+        el.style.backgroundImage = `url(${data.image})`;
+        if(data.hasEye) {
+          const eye = document.createElement('span');
+          eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
+        }
+        mapContainer.appendChild(el);
+      });
+    }
+
+    function setupHiderUI() {
+      mode = 'move'; renderMap();
       pWidth = 80; pHeight = 80;
-      
-      pX = Math.round(mapContainer.clientWidth / 2); 
-      pY = Math.round(mapContainer.clientHeight / 2);
-      
+      pX = Math.round(mapContainer.clientWidth / 2); pY = Math.round(mapContainer.clientHeight / 2);
       document.getElementById('ui-move').style.display = 'flex';
-      document.getElementById('ui-edit').style.display = 'none';
-      document.getElementById('ui-seek').style.display = 'none';
-      document.getElementById('ui-gameover').style.display = 'none';
+      localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
+      gameLoop();
+    }
+
+    // 7. 조작 및 액션 로직 (window에 노출시켜 HTML onclick 연결)
+    window.addEventListener('keydown', e => { 
+      keys[e.key.toLowerCase()] = true; 
+      if(e.code === 'Space') {
+        e.preventDefault(); 
+        if (mode === 'move') window.copyBackground();
+        else if (mode === 'edit') window.finishHiding();
+      }
+    });
+    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+    window.copyBackground = () => {
+      if(mode !== 'move') return;
+
+      // 🚨 겹침 방지 로직 🚨
+      const isOverlap = existingHiders.some(h => Math.hypot(h.pX - pX, h.pY - pY) < 50);
+      if (isOverlap) {
+        document.getElementById('overlap-warning').innerText = "⚠️ 이미 선점된 자리입니다!";
+        document.getElementById('overlap-warning').style.color = "#ff4757";
+        localPlayer.style.borderColor = "#ff4757";
+        setTimeout(() => { 
+          document.getElementById('overlap-warning').innerText = "노란 점: 크기조절"; 
+          document.getElementById('overlap-warning').style.color = "#aaa";
+          localPlayer.style.borderColor = "#e74c3c";
+        }, 1500);
+        return;
+      }
+
+      const tCanvas = document.createElement('canvas');
+      const sw = Math.round(pWidth * dpr), sh = Math.round(pHeight * dpr);
+      const sx = Math.round((pX - pWidth/2) * dpr), sy = Math.round((pY - pHeight/2) * dpr);
+      tCanvas.width = sw; tCanvas.height = sh;
+      tCanvas.getContext('2d').drawImage(bgCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
       
-      player.style.display = 'flex'; player.className = '';
-      player.style.backgroundImage = 'none'; 
-      player.style.width = `${pWidth}px`; player.style.height = `${pHeight}px`;
-      player.style.transform = `translate(-50%, -50%) rotate(0deg)`;
-      player.style.setProperty('--rot', '0deg');
+      localPlayer.style.backgroundImage = `url(${tCanvas.toDataURL()})`;
+      localPlayer.classList.add('copied');
       
-      doodleCanvas.style.display = 'none'; 
-      face.innerText = ''; // 눈알 초기화
-      document.getElementById('jelly-busted').style.display = 'none';
-      
-      let nextMap;
-      do { nextMap = Math.floor(Math.random() * mapGenerators.length); } 
-      while (nextMap === currentMapIndex && mapGenerators.length > 1);
-      currentMapIndex = nextMap;
-      
-      renderMap();
+      mode = 'edit';
+      document.getElementById('ui-move').style.display = 'none';
+      document.getElementById('ui-edit').style.display = 'flex';
     };
 
-    // --- 3. 이동 및 뷰파인더 크기 조절 ---
+    window.toggleEye = () => { localFace.innerText = localFace.innerText === '👀' ? '' : '👀'; };
+    
+    rotSlider.addEventListener('input', (e) => {
+      rotation = e.target.value;
+      localPlayer.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+      localPlayer.style.setProperty('--rot', `${rotation}deg`);
+    });
+
+    window.finishHiding = async () => {
+      if(mode !== 'edit') return;
+      const userTaunt = document.getElementById('taunt-input').value.trim();
+      if(userTaunt) tauntMessage = userTaunt;
+
+      const myData = {
+        pX: pX, pY: pY, pWidth: pWidth, pHeight: pHeight, rotation: rotation,
+        hasEye: (localFace.innerText === '👀'),
+        image: localPlayer.style.backgroundImage.slice(5, -2),
+        taunt: tauntMessage
+      };
+
+      if (db) {
+        const roomRef = ref(db, 'rooms/' + currentRoomId);
+        const snap = await get(roomRef);
+        let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
+        if (!roomData.list) roomData.list = [];
+        roomData.list.push(myData);
+        await set(roomRef, roomData);
+        showShareScreen(roomData.list.length);
+      } else {
+        let roomData = JSON.parse(localStorage.getItem('room_' + currentRoomId)) || { mapIndex: currentMapIndex, list: [] };
+        roomData.list.push(myData);
+        localStorage.setItem('room_' + currentRoomId, JSON.stringify(roomData));
+        showShareScreen(roomData.list.length);
+      }
+    };
+
+    function showShareScreen(count) {
+      mode = 'share';
+      document.getElementById('ui-edit').style.display = 'none';
+      document.getElementById('ui-share').style.display = 'flex';
+      document.getElementById('room-status-text').innerText = `주차 완료! (현재 ${count}/9명)`;
+      if (isMobile) document.getElementById('joystick-zone').style.display = 'none';
+    }
+
+    window.copyLink = () => {
+      const shareUrl = `${location.origin}${location.pathname}?room=${currentRoomId}`;
+      navigator.clipboard.writeText(shareUrl).then(() => alert("방 링크 복사 완료! (최대 9명 참여 가능)"));
+    };
+
+    window.startPartySeek = () => {
+      location.href = `${location.origin}${location.pathname}?room=${currentRoomId}&mode=seek`;
+    };
+
+    // 8. 🕵️ 술래 (Seeker) 모드 (모든 유저 색출)
+    async function initSeeker(id) {
+      let roomData = null;
+      if (db) {
+        const snap = await get(ref(db, 'rooms/' + id));
+        if (snap.exists()) roomData = snap.val();
+      } else {
+        const local = localStorage.getItem('room_' + id);
+        if (local) roomData = JSON.parse(local);
+      }
+
+      if (roomData) {
+        mode = 'seek';
+        currentMapIndex = roomData.mapIndex;
+        renderMap();
+        localPlayer.style.display = 'none';
+
+        existingHiders = roomData.list || [];
+        document.getElementById('target-count').innerText = existingHiders.length;
+        document.getElementById('ui-move').style.display = 'none';
+        document.getElementById('ui-seek').style.display = 'flex';
+
+        // 모든 타겟 스폰 (클릭 감지 가능하도록 ID 부여)
+        existingHiders.forEach((data, idx) => {
+          const el = document.createElement('div');
+          el.className = 'player-obj copied breathing target-obj';
+          el.id = `target-${idx}`;
+          el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
+          el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
+          el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
+          el.style.setProperty('--rot', `${data.rotation}deg`);
+          el.style.backgroundImage = `url(${data.image})`;
+          if(data.hasEye) {
+            const eye = document.createElement('span');
+            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
+          }
+          mapContainer.appendChild(el);
+        });
+
+        startTime = Date.now();
+        timerInterval = setInterval(() => { document.getElementById('time').innerText = ((Date.now() - startTime)/1000).toFixed(2); }, 50);
+      } else {
+        alert("데이터를 찾을 수 없습니다.");
+        location.href = location.pathname;
+      }
+    }
+
+    // 타격 판정 (술래 전용)
+    mapContainer.addEventListener('click', (e) => {
+      if(mode !== 'seek') return;
+      const hitTarget = e.target.closest('.target-obj');
+
+      if (hitTarget) {
+        const idx = parseInt(hitTarget.id.split('-')[1]);
+        const caughtData = existingHiders[idx];
+        hitTarget.remove(); 
+        
+        const jelly = document.createElement('div');
+        jelly.className = 'jelly-busted'; jelly.innerText = '😳💦';
+        jelly.style.left = `${caughtData.pX}px`; jelly.style.top = `${caughtData.pY}px`;
+        mapContainer.appendChild(jelly);
+
+        mapContainer.classList.add('shake-screen');
+        setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+        showFloatingText(e.clientX, e.clientY, `🎯 검거!`, '#2ecc71');
+
+        const remaining = document.querySelectorAll('.target-obj').length;
+        document.getElementById('target-count').innerText = remaining;
+
+        if (remaining === 0) {
+          clearInterval(timerInterval);
+          const elapsed = ((Date.now() - startTime)/1000).toFixed(2);
+          setTimeout(() => showResult("술래 완승! 🏆", `전원 색출 완료: ${elapsed}초`), 1000);
+        }
+      } else {
+        life--; document.getElementById('life').innerText = life;
+        mapContainer.classList.add('shake-screen');
+        setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+
+        if(life <= 0) {
+          clearInterval(timerInterval);
+          const randomTaunt = existingHiders[Math.floor(Math.random()*existingHiders.length)]?.taunt || "시력 검사 시급 ㅋㅋ";
+          setTimeout(() => showResult(`"${randomTaunt}"`, "술래 패배! 남은 젤리 생존"), 500);
+        } else {
+          showFloatingText(e.clientX, e.clientY, `❌ 헛방!`, '#e74c3c');
+        }
+      }
+    });
+
+    function showResult(title, sub) {
+      document.getElementById('result-taunt').innerText = title;
+      document.getElementById('result-time').innerText = sub;
+      document.getElementById('result-modal').style.display = 'flex';
+      mode = 'gameover';
+    }
+
+    function showFloatingText(x, y, text, color) {
+      const ft = document.createElement('div');
+      ft.className = 'floating-text'; ft.style.color = color; ft.innerText = text;
+      ft.style.left = `${x-40}px`; ft.style.top = `${y-20}px`;
+      document.body.appendChild(ft);
+    }
+
+    // 9. 이동/크기조절 루프
     let isResizing = false;
     resizeHandle.addEventListener('mousedown', (e) => { isResizing = true; e.stopPropagation(); });
-    resizeHandle.addEventListener('touchstart', (e) => { isResizing = true; e.stopPropagation(); }, {passive: false});
+    resizeHandle.addEventListener('touchstart', (e) => { isResizing = true; e.stopPropagation(); }, {passive:false});
     window.addEventListener('mouseup', () => isResizing = false);
     window.addEventListener('touchend', () => isResizing = false);
 
     window.addEventListener('mousemove', (e) => {
       if(!isResizing || mode !== 'move') return;
-      const rect = player.getBoundingClientRect();
+      const rect = localPlayer.getBoundingClientRect();
       pWidth = Math.round(Math.max(30, Math.min(400, e.clientX - rect.left)));
       pHeight = Math.round(Math.max(30, Math.min(400, e.clientY - rect.top)));
-      player.style.width = `${pWidth}px`; player.style.height = `${pHeight}px`;
+      localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
     });
-    window.addEventListener('touchmove', (e) => {
-      if(!isResizing || mode !== 'move') return;
-      const rect = player.getBoundingClientRect();
-      pWidth = Math.round(Math.max(30, Math.min(400, e.touches[0].clientX - rect.left)));
-      pHeight = Math.round(Math.max(30, Math.min(400, e.touches[0].clientY - rect.top)));
-      player.style.width = `${pWidth}px`; player.style.height = `${pHeight}px`;
-    }, {passive: false});
-
-    // ★ 스페이스바 만능 단축키 로직 통합 ★
-    window.addEventListener('keydown', e => { 
-      keys[e.key.toLowerCase()] = true; 
-      if(e.code === 'Space') {
-        e.preventDefault(); // 스크롤 방지
-        if (mode === 'move') copyBackground();
-        else if (mode === 'edit') startHiding();
-      }
-    });
-    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
     const joyZone = document.getElementById('joystick-zone');
     const joyKnob = document.getElementById('joystick-knob');
@@ -316,113 +564,15 @@
 
         pX = Math.round(Math.max(pWidth/2, Math.min(mapContainer.clientWidth - pWidth/2, pX + vX)));
         pY = Math.round(Math.max(pHeight/2, Math.min(mapContainer.clientHeight - pHeight/2, pY + vY)));
-        player.style.left = `${pX}px`; player.style.top = `${pY}px`;
+        localPlayer.style.left = `${pX}px`; localPlayer.style.top = `${pY}px`;
         
-        if(vX !== 0 || vY !== 0) player.classList.add('walking'); else player.classList.remove('walking');
+        if(vX !== 0 || vY !== 0) localPlayer.classList.add('walking'); else localPlayer.classList.remove('walking');
       }
       requestAnimationFrame(gameLoop);
     }
-    
-    renderMap();
-    gameLoop();
 
-    // --- 4. 캡처, 눈알 토글 로직 ---
-    window.copyBackground = () => {
-      if(mode !== 'move') return;
-      
-      const tCanvas = document.createElement('canvas');
-      const sw = Math.round(pWidth * dpr);
-      const sh = Math.round(pHeight * dpr);
-      const sx = Math.round((pX - pWidth/2) * dpr);
-      const sy = Math.round((pY - pHeight/2) * dpr);
-
-      tCanvas.width = sw; tCanvas.height = sh;
-      const tCtx = tCanvas.getContext('2d');
-      tCtx.drawImage(bgCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
-      
-      player.style.backgroundImage = `url(${tCanvas.toDataURL()})`;
-      player.classList.add('copied');
-      
-      mode = 'edit';
-      document.getElementById('ui-move').style.display = 'none';
-      document.getElementById('ui-edit').style.display = 'flex';
-      
-      doodleCanvas.style.display = 'block';
-      doodleCanvas.width = sw; doodleCanvas.height = sh;
-      doodleCtx.scale(dpr, dpr);
-    };
-
-    window.toggleEye = () => {
-      face.innerText = face.innerText === '👀' ? '' : '👀';
-    };
-
-    rotSlider.addEventListener('input', (e) => {
-      rotation = e.target.value;
-      player.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
-      player.style.setProperty('--rot', `${rotation}deg`);
-    });
-
-    let isDrawing = false, tool = 'pen';
-    window.setTool = (t) => { tool = t; document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen'); document.getElementById('btn-eraser').classList.toggle('active-tool', t === 'eraser'); doodleCtx.globalCompositeOperation = t === 'eraser' ? 'destination-out' : 'source-over'; };
-    function getMousePos(e) { const rect = doodleCanvas.getBoundingClientRect(); const cX = e.touches ? e.touches[0].clientX : e.clientX; const cY = e.touches ? e.touches[0].clientY : e.clientY; return { x: cX - rect.left, y: cY - rect.top }; }
-    doodleCanvas.addEventListener('mousedown', (e) => { if(mode==='edit'){ isDrawing = true; doodleCtx.beginPath(); doodleCtx.moveTo(getMousePos(e).x, getMousePos(e).y); doodleCtx.lineWidth=3; doodleCtx.strokeStyle=document.getElementById('doodle-color').value; } });
-    doodleCanvas.addEventListener('mousemove', (e) => { if(isDrawing && mode==='edit'){ doodleCtx.lineTo(getMousePos(e).x, getMousePos(e).y); doodleCtx.stroke(); } });
-    window.addEventListener('mouseup', () => isDrawing = false);
-    doodleCanvas.addEventListener('touchstart', (e) => { if(mode==='edit'){ isDrawing = true; doodleCtx.beginPath(); doodleCtx.moveTo(getMousePos(e).x, getMousePos(e).y); doodleCtx.lineWidth=3; doodleCtx.strokeStyle=document.getElementById('doodle-color').value; } }, {passive:false});
-    doodleCanvas.addEventListener('touchmove', (e) => { if(isDrawing && mode==='edit'){ e.preventDefault(); doodleCtx.lineTo(getMousePos(e).x, getMousePos(e).y); doodleCtx.stroke(); } }, {passive:false});
-    window.addEventListener('touchend', () => isDrawing = false);
-
-    // --- 5. 술래 모드 및 Hit 판정 ---
-    window.startHiding = () => {
-      if(mode !== 'edit') return;
-      mode = 'seek';
-      document.getElementById('ui-edit').style.display = 'none';
-      document.getElementById('ui-seek').style.display = 'flex';
-      if(isMobile) document.getElementById('joystick-zone').style.display = 'none';
-      
-      player.classList.remove('walking');
-      player.classList.add('breathing');
-
-      startTime = Date.now();
-      timerInterval = setInterval(() => { document.getElementById('time').innerText = ((Date.now() - startTime)/1000).toFixed(2); }, 50);
-    };
-
-    mapContainer.addEventListener('click', (e) => {
-      if(mode !== 'seek') return;
-      const hitPlayer = e.target.closest('#player');
-
-      if (hitPlayer) {
-        clearInterval(timerInterval);
-        player.style.display = 'none';
-        
-        const jelly = document.getElementById('jelly-busted');
-        jelly.style.display = 'block';
-        jelly.style.left = `${pX}px`; jelly.style.top = `${pY}px`;
-        
-        mapContainer.classList.add('shake-screen');
-        showFloatingText(e.clientX, e.clientY, `🎯 ${(Date.now()-startTime)/1000}초 검거!`, '#2ecc71');
-        
-        mode = 'gameover'; document.getElementById('ui-gameover').style.display = 'flex';
-      } else {
-        life--; document.getElementById('life').innerText = life;
-        mapContainer.classList.add('shake-screen');
-        setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
-        showFloatingText(e.clientX, e.clientY, `❌ 헛방!`, '#e74c3c');
-
-        if(life <= 0) {
-          clearInterval(timerInterval);
-          showFloatingText(pX, pY, `젤리의 완승! ㅋㅋ`, '#3498db');
-          mode = 'gameover'; document.getElementById('ui-gameover').style.display = 'flex';
-        }
-      }
-    });
-
-    function showFloatingText(x, y, text, color) {
-      const ft = document.createElement('div');
-      ft.className = 'floating-text'; ft.style.color = color; ft.innerText = text;
-      ft.style.left = `${x-40}px`; ft.style.top = `${y-20}px`;
-      document.body.appendChild(ft);
-    }
+    // 시스템 시동!
+    initializeSystem();
   </script>
 </body>
 </html>
