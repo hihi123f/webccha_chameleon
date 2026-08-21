@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>웹챠 카멜레온 (Webcha Chameleon)</title>
 
-  <!-- 💡 안정적인 Firebase v8 세팅 (에러 안남!) -->
+  <!-- 안정적인 Firebase v8 세팅 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -23,7 +23,6 @@
     .btn-sub { background: #555; color: white; }
     .active-tool { border: 2px solid #ffd32a !important; background: #666; color: #ffd32a; }
 
-    /* 개선된 컨트롤 박스 */
     .control-box { display: flex; align-items: center; gap: 4px; background: #333; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; }
     .rot-btn { background: #555; color: white; padding: 2px 8px; border-radius: 4px; font-size: 16px; border: none; }
     .rot-btn:active { background: #777; }
@@ -33,8 +32,9 @@
     #map-container { flex-grow: 1; position: relative; width: 100vw; overflow: hidden; background: #fff; cursor: crosshair; }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
+    /* 💡 [핵심 패치] border 대신 outline을 사용하여 캡처 찌그러짐 현상 완벽 차단 */
     .player-obj { position: absolute; transform: translate(-50%, -50%); z-index: 5; box-sizing: border-box; display: flex; justify-content: center; align-items: center; background-size: 100% 100%; pointer-events: none; }
-    #local-player { border: 2px dashed #e74c3c; background: rgba(231, 76, 60, 0.1); }
+    #local-player { outline: 2px dashed #e74c3c; outline-offset: -2px; background: rgba(231, 76, 60, 0.1); }
     
     #resize-handle { position: absolute; right: -15px; bottom: -15px; width: 30px; height: 30px; background: #f1c40f; border: 2px solid #222; border-radius: 50%; cursor: se-resize; z-index: 25; pointer-events: auto; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
 
@@ -42,7 +42,7 @@
     #crosshair { position: absolute; color: #e74c3c; font-weight: bold; font-size: 18px; pointer-events: none; }
     .obj-face { position: absolute; z-index: 20; font-size: 22px; pointer-events: none; }
 
-    .copied { border: none !important; background-color: transparent !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .copied { outline: none !important; background-color: transparent !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
     .copied #resize-handle, .copied #crosshair { display: none; }
     .walking { animation: waddle 0.25s infinite alternate; }
     @keyframes waddle { 0% { margin-left: -2px; } 100% { margin-left: 2px; } }
@@ -63,8 +63,9 @@
     .taunt-floating-banner { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); background: #ff4757; color: white; padding: 16px 28px; border-radius: 50px; font-size: 22px; font-weight: 900; box-shadow: 0 10px 25px rgba(0,0,0,0.4); z-index: 150; pointer-events: none; border: 4px solid #fff; animation: popTaunt 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; white-space: nowrap; }
     @keyframes popTaunt { 0% { transform: translate(-50%, -50%) scale(0.4) rotate(-10deg); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1) rotate(-3deg); opacity: 1; } }
 
-    #joystick-zone { position: absolute; bottom: 30px; left: 20px; width: 100px; height: 100px; background: rgba(0,0,0,0.2); border-radius: 50%; z-index: 20; display: none; }
-    #joystick-knob { position: absolute; top: 30px; left: 30px; width: 40px; height: 40px; background: rgba(255,255,255,0.7); border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+    /* 💡 [자유 조이스틱 CSS] 터치하는 곳 어디든 생기도록 설정 */
+    #joy-base { position: absolute; width: 100px; height: 100px; background: rgba(0,0,0,0.15); border-radius: 50%; z-index: 20; display: none; pointer-events: none; transform: translate(-50%, -50%); }
+    #joy-knob { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; background: rgba(255,255,255,0.8); border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transform: translate(-50%, -50%); }
     
     #mobile-action-btn { position: absolute; bottom: 40px; right: 20px; width: 70px; height: 70px; background: #3498db; border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 30; color: white; font-size: 28px; font-weight: bold; display: none; justify-content: center; align-items: center; cursor: pointer; }
     #mobile-action-btn:active { transform: scale(0.9); }
@@ -81,7 +82,6 @@
     </div>
     
     <div id="ui-edit" class="ui-group" style="display:none;">
-      <!-- 💡 회전 UX 완벽 개선: +, - 버튼과 넓어진 슬라이더 -->
       <div class="control-box">
         🔄 
         <button class="rot-btn" onclick="window.adjustRot(-1)">-</button>
@@ -126,13 +126,16 @@
       <div id="resize-handle"></div>
     </div>
 
-    <div id="joystick-zone"><div id="joystick-knob"></div></div>
+    <!-- 💡 자유 조이스틱 베이스 -->
+    <div id="joy-base"><div id="joy-knob"></div></div>
+    
+    <!-- 모바일 우측 하단 액션 버튼 -->
     <div id="mobile-action-btn">📸</div>
   </div>
 
   <script>
     // ==========================================
-    // 💡 Firebase v8 안정화 버전 연동 (충돌 방지)
+    // 💡 Firebase v8 안정화 버전 연동
     // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyDYmOC4OiW90_8ee0ndpO6xSRSBKJENlws",
@@ -148,10 +151,7 @@
     try {
       firebase.initializeApp(firebaseConfig);
       db = firebase.database();
-      console.log("Firebase Database 연결 성공!");
-    } catch(e) {
-      console.warn("Firebase 연결 실패 -> 로컬 모드로 작동합니다.", e);
-    }
+    } catch(e) { console.warn("Firebase 연결 실패 -> 로컬 모드로 작동합니다.", e); }
 
     const mapContainer = document.getElementById('map-container');
     const bgCanvas = document.getElementById('bg-canvas');
@@ -166,10 +166,9 @@
     let mode = 'move'; 
     let pX, pY, pWidth = 80, pHeight = 80;
     let vX = 0, vY = 0, rotation = 0;
-    const speed = 4;
+    const speed = 4; // PC 키보드 속도
     let keys = {};
     let life = 3, timeLeft = 180, timerInterval;
-    let isJoystickActive = false;
     
     let currentRoomId = null;
     let currentMapIndex = 0;
@@ -182,7 +181,6 @@
     
     const actionBtn = document.getElementById('mobile-action-btn');
     if (isMobile) {
-      document.getElementById('joystick-zone').style.display = 'block';
       actionBtn.style.display = 'flex';
       document.getElementById('btn-copy').innerText = '📸 스캔';
       document.getElementById('btn-hide').innerText = '🤫 주차';
@@ -259,7 +257,7 @@
     window.addEventListener('resize', renderMap);
 
     // ==========================================
-    // 🔍 뷰파인더 크기 조절
+    // 🔍 뷰파인더 크기 조절 (자유 조이스틱과 충돌 방지)
     // ==========================================
     let isResizing = false;
     function onResizeStart(e) {
@@ -282,7 +280,6 @@
       pHeight = Math.round(Math.max(40, Math.min(300, (currentMouseY - pY) * 2)));
       localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
     }
-
     window.addEventListener('mousemove', (e) => handleResizeMove(e.clientX, e.clientY));
     window.addEventListener('touchmove', (e) => {
       if (isResizing) { e.preventDefault(); handleResizeMove(e.touches[0].clientX, e.touches[0].clientY); }
@@ -338,8 +335,6 @@
     // ==========================================
     // 🎛️ 회전 및 스캔 & 주차 시스템
     // ==========================================
-    
-    // 💡 회전 미세조정 버튼 기능 (+, -)
     window.adjustRot = (val) => {
       let current = parseInt(rotSlider.value);
       current = (current + val) % 360;
@@ -368,7 +363,7 @@
 
     if (isMobile) {
       actionBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         if (mode === 'move') window.copyBackground();
         else if (mode === 'edit') window.finishHiding();
       });
@@ -458,7 +453,7 @@
       document.getElementById('ui-edit').style.display = 'none';
       document.getElementById('ui-share').style.display = 'flex';
       document.getElementById('room-status-text').innerText = `주차 완료! (현재 ${count}/9명)`;
-      if (isMobile) { document.getElementById('joystick-zone').style.display = 'none'; actionBtn.style.display = 'none'; }
+      if (isMobile) { actionBtn.style.display = 'none'; }
     }
 
     window.copyLink = () => {
@@ -471,7 +466,7 @@
     };
 
     // ==========================================
-    // 🕵️ 술래 모드 
+    // 🕵️ 술래 모드
     // ==========================================
     function initSeeker(id) {
       if (db) {
@@ -496,7 +491,7 @@
       document.getElementById('target-count').innerText = existingHiders.length;
       document.getElementById('ui-move').style.display = 'none';
       document.getElementById('ui-seek').style.display = 'flex';
-      if (isMobile) { document.getElementById('joystick-zone').style.display = 'none'; actionBtn.style.display = 'none'; }
+      if (isMobile) { actionBtn.style.display = 'none'; }
 
       existingHiders.forEach((data, idx) => {
         const el = document.createElement('div');
@@ -514,7 +509,6 @@
         mapContainer.appendChild(el);
       });
 
-      // 넉넉한 타이머 (180초)
       timeLeft = 180;
       document.getElementById('time').innerText = timeLeft;
       timerInterval = setInterval(() => {
@@ -593,42 +587,68 @@
     }
 
     // ==========================================
-    // 🕹️ 조이스틱 및 캐릭터 이동 로직 
+    // 🕹️ 💡 [핵심 패치] 자유 조이스틱 시스템 (어디든 터치하면 생성!)
     // ==========================================
-    const joyZone = document.getElementById('joystick-zone');
-    const joyKnob = document.getElementById('joystick-knob');
-    let joyCenter = {x: 50, y: 50};
+    let isJoystickActive = false;
+    let joyBase = document.getElementById('joy-base');
+    let joyKnob = document.getElementById('joy-knob');
+    let joyStart = { x: 0, y: 0 };
+    const MAX_JOY_RADIUS = 40;
+    const JOY_SPEED = 2.5; // 모바일 조이스틱 전용 낮은 감도(부드러움)
     
-    function handleJoy(e) {
+    mapContainer.addEventListener('touchstart', (e) => {
       if(mode !== 'move' && mode !== 'edit') return;
-      e.preventDefault();
+      // UI, 크기조절 버튼, 우측 하단 버튼, 낙서 캔버스를 터치한 거면 조이스틱 발동 금지
+      if(e.target.closest('#ui') || e.target.closest('#resize-handle') || e.target.closest('#mobile-action-btn') || e.target.closest('#doodle-canvas')) return;
+      
       isJoystickActive = true;
-      const touch = e.targetTouches[0] || e.touches[0];
-      const rect = joyZone.getBoundingClientRect();
-      let touchX = touch.clientX - rect.left;
-      let touchY = touch.clientY - rect.top;
-      let dx = touchX - joyCenter.x, dy = touchY - joyCenter.y;
-      let dist = Math.sqrt(dx*dx + dy*dy);
-      if(dist > 30) { dx *= 30/dist; dy *= 30/dist; }
-      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
-      vX = (dx/30)*speed; vY = (dy/30)*speed;
-    }
-    
-    function releaseJoy(e) {
-      if(e.touches.length === 0) {
+      const touch = e.touches[0];
+      const rect = mapContainer.getBoundingClientRect();
+      joyStart.x = touch.clientX - rect.left;
+      joyStart.y = touch.clientY - rect.top;
+      
+      joyBase.style.left = `${joyStart.x}px`;
+      joyBase.style.top = `${joyStart.y}px`;
+      joyBase.style.display = 'block';
+      joyKnob.style.transform = `translate(-50%, -50%)`;
+      vX = 0; vY = 0;
+    }, {passive: false});
+
+    mapContainer.addEventListener('touchmove', (e) => {
+      if(!isJoystickActive) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = mapContainer.getBoundingClientRect();
+      let currentX = touch.clientX - rect.left;
+      let currentY = touch.clientY - rect.top;
+      
+      let dx = currentX - joyStart.x;
+      let dy = currentY - joyStart.y;
+      let dist = Math.hypot(dx, dy);
+      
+      if(dist > MAX_JOY_RADIUS) {
+        dx = (dx / dist) * MAX_JOY_RADIUS;
+        dy = (dy / dist) * MAX_JOY_RADIUS;
+      }
+      
+      joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      vX = (dx / MAX_JOY_RADIUS) * JOY_SPEED;
+      vY = (dy / MAX_JOY_RADIUS) * JOY_SPEED;
+    }, {passive: false});
+
+    function endJoy() {
+      if(isJoystickActive) {
         isJoystickActive = false;
-        vX=0; vY=0; joyKnob.style.transform = `translate(0,0)`;
+        joyBase.style.display = 'none';
+        vX = 0; vY = 0;
       }
     }
-
-    joyZone.addEventListener('touchstart', handleJoy, {passive: false});
-    joyZone.addEventListener('touchmove', handleJoy, {passive: false});
-    joyZone.addEventListener('touchend', releaseJoy);
-    joyZone.addEventListener('touchcancel', releaseJoy);
+    mapContainer.addEventListener('touchend', endJoy);
+    mapContainer.addEventListener('touchcancel', endJoy);
 
     function gameLoop() {
-      // 💡 edit(편집) 모드일 때도 키보드/조이스틱 이동 가능!
       if (mode === 'move' || mode === 'edit') {
+        // PC 키보드 로직 (조이스틱을 안 쓸 때만)
         if (!isJoystickActive) {
           vY = 0; vX = 0;
           if (keys['w'] || keys['arrowup']) vY = -speed; else if (keys['s'] || keys['arrowdown']) vY = speed;
@@ -704,7 +724,6 @@
       gameLoop();
     }
 
-    // 시스템 시동!
     initSystem();
   </script>
 </body>
