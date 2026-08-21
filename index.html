@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chameleon.io 프로토타입</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; background: #222; color: white; display: flex; flex-direction: column; align-items: center; }
+    #ui { padding: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; background: #333; width: 100%; z-index: 10; }
+    button, input { padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; }
+    #btn-hide { background: #ff4757; color: white; }
+    
+    /* 맵 컨테이너 (랜덤 스크린샷 맵 역할) */
+    #map-container {
+      position: relative;
+      width: 800px;
+      height: 600px;
+      max-width: 100vw;
+      background: url('https://picsum.photos/800/600') no-repeat center/cover; /* 임시 배경 */
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    /* 유저가 그리는 도화지 / 숨은 껍데기 */
+    #draw-canvas {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      border: 1px dashed #fff;
+      image-rendering: pixelated; /* 도트 느낌 살리기 */
+      z-index: 2;
+    }
+
+    /* 숨쉬기 애니메이션 (위장 완료 후) */
+    .breathing {
+      border: none !important;
+      animation: breath 3s infinite ease-in-out;
+      cursor: pointer;
+    }
+    @keyframes breath {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50% { transform: translate(-50%, -50%) scale(1.05); }
+    }
+
+    /* 하얀 본체 (들켰을 때 등장) */
+    #jelly-body {
+      position: absolute;
+      display: none;
+      font-size: 40px;
+      z-index: 1;
+      /* 덜덜 떠는 애니메이션 */
+      animation: tremble 0.1s infinite; 
+    }
+    @keyframes tremble {
+      0% { transform: translate(-2px, 1px); }
+      50% { transform: translate(2px, -1px); }
+      100% { transform: translate(-2px, 1px); }
+    }
+
+    /* 플로팅 텍스트 애니메이션 */
+    .floating-text {
+      position: absolute;
+      color: #ffd32a;
+      font-weight: 900;
+      font-size: 24px;
+      text-shadow: 2px 2px 4px #000;
+      pointer-events: none;
+      animation: floatUp 1.5s ease-out forwards;
+      z-index: 100;
+    }
+    @keyframes floatUp {
+      0% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(-50px); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="ui">
+    <input type="color" id="color-picker" value="#ffffff">
+    <button onclick="clearCanvas()">지우개</button>
+    <button id="btn-hide" onclick="startHiding()">👀 숨기 완료! (술래 모드로 전환)</button>
+    <div id="timer-display" style="display:none; font-size: 1.2rem; line-height: 2.2rem;">⏱️ <span id="time">0.00</span>초</div>
+  </div>
+
+  <div id="map-container">
+    <canvas id="draw-canvas" width="64" height="64" style="width: 128px; height: 128px;"></canvas>
+    <div id="jelly-body">😳</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('draw-canvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('color-picker');
+    let isDrawing = false;
+    let mode = 'draw'; // 'draw' | 'seek'
+    let startTime;
+    let timerInterval;
+
+    // --- 1. 그리기 로직 ---
+    function getMousePos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (evt.clientX - rect.left) * scaleX,
+        y: (evt.clientY - rect.top) * scaleY
+      };
+    }
+
+    function drawPixel(evt) {
+      if (!isDrawing || mode !== 'draw') return;
+      const pos = getMousePos(evt);
+      ctx.fillStyle = colorPicker.value;
+      // 4x4 크기의 붓으로 칠하기
+      ctx.fillRect(Math.floor(pos.x/4)*4, Math.floor(pos.y/4)*4, 4, 4); 
+    }
+
+    canvas.addEventListener('mousedown', (e) => { isDrawing = true; drawPixel(e); });
+    canvas.addEventListener('mousemove', drawPixel);
+    window.addEventListener('mouseup', () => { isDrawing = false; });
+    canvas.addEventListener('touchstart', (e) => { isDrawing = true; drawPixel(e.touches[0]); });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); drawPixel(e.touches[0]); });
+    window.addEventListener('touchend', () => { isDrawing = false; });
+
+    window.clearCanvas = () => ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // --- 2. 숨기 완료 (술래 모드 전환) ---
+    window.startHiding = () => {
+      mode = 'seek';
+      document.getElementById('btn-hide').style.display = 'none';
+      document.getElementById('timer-display').style.display = 'block';
+      
+      // 캔버스에 숨쉬기 애니메이션 추가
+      canvas.classList.add('breathing');
+
+      // 초시계 시작
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        document.getElementById('time').innerText = elapsed.toFixed(2);
+      }, 50);
+    };
+
+    // --- 3. 검거 로직 (Busted!) ---
+    canvas.addEventListener('click', (e) => {
+      if (mode !== 'seek') return;
+      clearInterval(timerInterval);
+      
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+      const rect = canvas.getBoundingClientRect();
+      
+      // 껍데기(캔버스) 숨기기
+      canvas.style.display = 'none';
+
+      // 덜덜 떠는 본체(젤리) 등장
+      const jelly = document.getElementById('jelly-body');
+      jelly.style.display = 'block';
+      jelly.style.left = `${rect.left + rect.width/2 - 20}px`;
+      jelly.style.top = `${rect.top + rect.width/2 - 20}px`;
+
+      // 플로팅 텍스트 연출
+      const floatingText = document.createElement('div');
+      floatingText.className = 'floating-text';
+      floatingText.innerHTML = `🎯 ${elapsed}초 검거!<br><span style="font-size:16px; color:white">"아 이걸 찾네 ㅋㅋㅋ"</span>`;
+      floatingText.style.left = `${e.clientX - 50}px`;
+      floatingText.style.top = `${e.clientY - 30}px`;
+      document.body.appendChild(floatingText);
+    });
+  </script>
+</body>
+</html>
