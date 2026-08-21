@@ -5,10 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>웹챠 카멜레온 (Webcha Chameleon)</title>
 
-  <!-- 안정적인 Firebase v8 세팅 -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
   <style>
     body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; }
     
@@ -32,9 +28,9 @@
     #map-container { flex-grow: 1; position: relative; width: 100vw; overflow: hidden; background: #fff; cursor: crosshair; }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-    /* 💡 [핵심 패치] border 대신 outline을 사용하여 캡처 찌그러짐 현상 완벽 차단 */
-    .player-obj { position: absolute; transform: translate(-50%, -50%); z-index: 5; box-sizing: border-box; display: flex; justify-content: center; align-items: center; background-size: 100% 100%; pointer-events: none; }
-    #local-player { outline: 2px dashed #e74c3c; outline-offset: -2px; background: rgba(231, 76, 60, 0.1); }
+    /* 💡 확대 버그 픽스: background -> background-color 로 변경하여 background-size: 100% 100% 보존 */
+    .player-obj { position: absolute; transform: translate(-50%, -50%); z-index: 5; box-sizing: border-box; display: flex; justify-content: center; align-items: center; background-size: 100% 100%; background-repeat: no-repeat; pointer-events: none; }
+    #local-player { outline: 2px dashed #e74c3c; outline-offset: -2px; background-color: rgba(231, 76, 60, 0.1); }
     
     #resize-handle { position: absolute; right: -15px; bottom: -15px; width: 30px; height: 30px; background: #f1c40f; border: 2px solid #222; border-radius: 50%; cursor: se-resize; z-index: 25; pointer-events: auto; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
 
@@ -63,7 +59,7 @@
     .taunt-floating-banner { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); background: #ff4757; color: white; padding: 16px 28px; border-radius: 50px; font-size: 22px; font-weight: 900; box-shadow: 0 10px 25px rgba(0,0,0,0.4); z-index: 150; pointer-events: none; border: 4px solid #fff; animation: popTaunt 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; white-space: nowrap; }
     @keyframes popTaunt { 0% { transform: translate(-50%, -50%) scale(0.4) rotate(-10deg); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1) rotate(-3deg); opacity: 1; } }
 
-    /* 💡 [자유 조이스틱 CSS] 터치하는 곳 어디든 생기도록 설정 */
+    /* 자유 조이스틱 베이스 */
     #joy-base { position: absolute; width: 100px; height: 100px; background: rgba(0,0,0,0.15); border-radius: 50%; z-index: 20; display: none; pointer-events: none; transform: translate(-50%, -50%); }
     #joy-knob { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; background: rgba(255,255,255,0.8); border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transform: translate(-50%, -50%); }
     
@@ -77,7 +73,7 @@
     <div style="font-weight:900; color:#3498db; font-size:16px;">🦎 웹챠 카멜레온</div>
 
     <div id="ui-move" class="ui-group" style="display:none;">
-      <span style="font-size:12px; color:#aaa;" id="overlap-warning">노란 점 드래그: 크기조절</span>
+      <span style="font-size:12px; color:#aaa;" id="overlap-warning">노란 점: 크기조절</span>
       <button class="btn-main" id="btn-copy" onclick="window.copyBackground()">📸 스캔 (Space)</button>
     </div>
     
@@ -85,7 +81,7 @@
       <div class="control-box">
         🔄 
         <button class="rot-btn" onclick="window.adjustRot(-1)">-</button>
-        <input type="range" id="rot-slider" min="0" max="360" value="0" style="width:100px;">
+        <input type="range" id="rot-slider" min="0" max="360" value="0" style="width:70px;">
         <button class="rot-btn" onclick="window.adjustRot(1)">+</button>
       </div>
       
@@ -126,17 +122,18 @@
       <div id="resize-handle"></div>
     </div>
 
-    <!-- 💡 자유 조이스틱 베이스 -->
     <div id="joy-base"><div id="joy-knob"></div></div>
-    
-    <!-- 모바일 우측 하단 액션 버튼 -->
     <div id="mobile-action-btn">📸</div>
   </div>
 
-  <script>
+  <script type="module">
     // ==========================================
-    // 💡 Firebase v8 안정화 버전 연동
+    // 💡 Firebase V12 모듈 연동 (대표님 설정 100% 적용)
     // ==========================================
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-analytics.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyDYmOC4OiW90_8ee0ndpO6xSRSBKJENlws",
       authDomain: "webcchachameleon.firebaseapp.com",
@@ -144,14 +141,20 @@
       projectId: "webcchachameleon",
       storageBucket: "webcchachameleon.firebasestorage.app",
       messagingSenderId: "1027865688324",
-      appId: "1:1027865688324:web:66dc784418c4a479a37851"
+      appId: "1:1027865688324:web:66dc784418c4a479a37851",
+      measurementId: "G-GHVD9R8N8J"
     };
 
     let db = null;
+    let app = null;
     try {
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.database();
-    } catch(e) { console.warn("Firebase 연결 실패 -> 로컬 모드로 작동합니다.", e); }
+      app = initializeApp(firebaseConfig);
+      getAnalytics(app);
+      db = getDatabase(app);
+      console.log("Firebase Database 연결 성공!");
+    } catch(e) {
+      console.warn("Firebase 연결 실패 -> 로컬 모드로 작동합니다.", e);
+    }
 
     const mapContainer = document.getElementById('map-container');
     const bgCanvas = document.getElementById('bg-canvas');
@@ -257,7 +260,7 @@
     window.addEventListener('resize', renderMap);
 
     // ==========================================
-    // 🔍 뷰파인더 크기 조절 (자유 조이스틱과 충돌 방지)
+    // 🔍 뷰파인더 크기 조절
     // ==========================================
     let isResizing = false;
     function onResizeStart(e) {
@@ -390,6 +393,7 @@
       tCanvas.getContext('2d').drawImage(bgCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
       
       localPlayer.style.backgroundImage = `url(${tCanvas.toDataURL()})`;
+      localPlayer.style.backgroundSize = `100% 100%`; // 명시적 고정
       localPlayer.classList.add('copied');
       
       mode = 'edit';
@@ -416,7 +420,7 @@
 
       const bgImg = new Image();
       bgImg.src = localPlayer.style.backgroundImage.slice(5, -2);
-      bgImg.onload = () => {
+      bgImg.onload = async () => {
         mCtx.drawImage(bgImg, 0, 0, mergedCanvas.width, mergedCanvas.height);
         mCtx.drawImage(doodleCanvas, 0, 0); 
 
@@ -427,19 +431,19 @@
           taunt: tauntMessage
         };
 
-        saveData(myData);
+        await saveData(myData);
       };
     };
 
-    function saveData(myData) {
+    async function saveData(myData) {
       if (db) {
-        const roomRef = firebase.database().ref('rooms/' + currentRoomId);
-        roomRef.once('value').then(snap => {
-          let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
-          if (!roomData.list) roomData.list = [];
-          roomData.list.push(myData);
-          roomRef.set(roomData).then(() => showShareScreen(roomData.list.length));
-        });
+        const roomRef = ref(db, 'rooms/' + currentRoomId);
+        const snap = await get(roomRef);
+        let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
+        if (!roomData.list) roomData.list = [];
+        roomData.list.push(myData);
+        await set(roomRef, roomData);
+        showShareScreen(roomData.list.length);
       } else {
         let roomData = JSON.parse(localStorage.getItem('room_' + currentRoomId)) || { mapIndex: currentMapIndex, list: [] };
         roomData.list.push(myData);
@@ -468,57 +472,59 @@
     // ==========================================
     // 🕵️ 술래 모드
     // ==========================================
-    function initSeeker(id) {
+    async function initSeeker(id) {
+      let roomData = null;
       if (db) {
-        firebase.database().ref('rooms/' + id).once('value').then(snap => {
-          if (snap.exists()) startSeekerMode(snap.val());
-          else alert("데이터를 찾을 수 없습니다.");
-        });
+        const snap = await get(ref(db, 'rooms/' + id));
+        if (snap.exists()) roomData = snap.val();
       } else {
         const local = localStorage.getItem('room_' + id);
-        if (local) startSeekerMode(JSON.parse(local));
-        else alert("데이터를 찾을 수 없습니다.");
+        if (local) roomData = JSON.parse(local);
       }
-    }
 
-    function startSeekerMode(roomData) {
-      mode = 'seek';
-      currentMapIndex = roomData.mapIndex;
-      renderMap();
-      localPlayer.style.display = 'none';
+      if (roomData) {
+        mode = 'seek';
+        currentMapIndex = roomData.mapIndex;
+        renderMap();
+        localPlayer.style.display = 'none';
 
-      existingHiders = roomData.list || [];
-      document.getElementById('target-count').innerText = existingHiders.length;
-      document.getElementById('ui-move').style.display = 'none';
-      document.getElementById('ui-seek').style.display = 'flex';
-      if (isMobile) { actionBtn.style.display = 'none'; }
+        existingHiders = roomData.list || [];
+        document.getElementById('target-count').innerText = existingHiders.length;
+        document.getElementById('ui-move').style.display = 'none';
+        document.getElementById('ui-seek').style.display = 'flex';
+        if (isMobile) { actionBtn.style.display = 'none'; }
 
-      existingHiders.forEach((data, idx) => {
-        const el = document.createElement('div');
-        el.className = 'player-obj copied breathing target-obj';
-        el.id = `target-${idx}`;
-        el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
-        el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
-        el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
-        el.style.setProperty('--rot', `${data.rotation}deg`);
-        el.style.backgroundImage = `url(${data.image})`;
-        if(data.hasEye) {
-          const eye = document.createElement('span');
-          eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
-        }
-        mapContainer.appendChild(el);
-      });
+        existingHiders.forEach((data, idx) => {
+          const el = document.createElement('div');
+          el.className = 'player-obj copied breathing target-obj';
+          el.id = `target-${idx}`;
+          el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
+          el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
+          el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
+          el.style.setProperty('--rot', `${data.rotation}deg`);
+          el.style.backgroundImage = `url(${data.image})`;
+          el.style.backgroundSize = '100% 100%';
+          if(data.hasEye) {
+            const eye = document.createElement('span');
+            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
+          }
+          mapContainer.appendChild(el);
+        });
 
-      timeLeft = 180;
-      document.getElementById('time').innerText = timeLeft;
-      timerInterval = setInterval(() => {
-        timeLeft--;
+        timeLeft = 180;
         document.getElementById('time').innerText = timeLeft;
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
-          triggerGameOver("시간 초과! 젤리들의 승리 ⏱️");
-        }
-      }, 1000);
+        timerInterval = setInterval(() => {
+          timeLeft--;
+          document.getElementById('time').innerText = timeLeft;
+          if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            triggerGameOver("시간 초과! 젤리들의 승리 ⏱️");
+          }
+        }, 1000);
+      } else {
+        alert("데이터를 찾을 수 없습니다.");
+        location.href = location.pathname;
+      }
     }
 
     mapContainer.addEventListener('click', (e) => {
@@ -587,18 +593,17 @@
     }
 
     // ==========================================
-    // 🕹️ 💡 [핵심 패치] 자유 조이스틱 시스템 (어디든 터치하면 생성!)
+    // 🕹️ 💡 조이스틱 감도 대폭 하향 (1.2) 및 플로팅 적용
     // ==========================================
     let isJoystickActive = false;
     let joyBase = document.getElementById('joy-base');
     let joyKnob = document.getElementById('joy-knob');
     let joyStart = { x: 0, y: 0 };
     const MAX_JOY_RADIUS = 40;
-    const JOY_SPEED = 2.5; // 모바일 조이스틱 전용 낮은 감도(부드러움)
+    const JOY_SPEED = 1.2; // 💡 모바일 조이스틱 전용 낮은 감도(부드러움)
     
     mapContainer.addEventListener('touchstart', (e) => {
       if(mode !== 'move' && mode !== 'edit') return;
-      // UI, 크기조절 버튼, 우측 하단 버튼, 낙서 캔버스를 터치한 거면 조이스틱 발동 금지
       if(e.target.closest('#ui') || e.target.closest('#resize-handle') || e.target.closest('#mobile-action-btn') || e.target.closest('#doodle-canvas')) return;
       
       isJoystickActive = true;
@@ -648,7 +653,6 @@
 
     function gameLoop() {
       if (mode === 'move' || mode === 'edit') {
-        // PC 키보드 로직 (조이스틱을 안 쓸 때만)
         if (!isJoystickActive) {
           vY = 0; vX = 0;
           if (keys['w'] || keys['arrowup']) vY = -speed; else if (keys['s'] || keys['arrowdown']) vY = speed;
@@ -664,20 +668,20 @@
       requestAnimationFrame(gameLoop);
     }
 
-    function initSystem() {
+    async function initSystem() {
       const urlParams = new URLSearchParams(window.location.search);
       currentRoomId = urlParams.get('room');
       const isSeekMode = urlParams.get('mode') === 'seek';
 
       if (currentRoomId) {
-        if (isSeekMode) initSeeker(currentRoomId);
-        else initJoinHider(currentRoomId);
+        if (isSeekMode) await initSeeker(currentRoomId);
+        else await initJoinHider(currentRoomId);
       } else {
         currentRoomId = Math.random().toString(36).substr(2, 6);
         currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
         existingHiders = [];
         mode = 'move'; renderMap();
-        pWidth = 80; pHeight = 80;
+        pWidth = 120; pHeight = 60;
         pX = Math.round(mapContainer.clientWidth / 2); pY = Math.round(mapContainer.clientHeight / 2);
         document.getElementById('ui-move').style.display = 'flex';
         localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
@@ -685,43 +689,45 @@
       }
     }
 
-    function initJoinHider(id) {
+    async function initJoinHider(id) {
+      let roomData = null;
       if (db) {
-        firebase.database().ref('rooms/' + id).once('value').then(snap => {
-          if (snap.exists()) setupJoinHider(snap.val());
-          else { alert("방을 찾을 수 없어 새 방을 엽니다."); initSystem(); }
-        });
+        const snap = await get(ref(db, 'rooms/' + id));
+        if (snap.exists()) roomData = snap.val();
       } else {
         const local = localStorage.getItem('room_' + id);
-        if (local) setupJoinHider(JSON.parse(local));
+        if (local) roomData = JSON.parse(local);
       }
-    }
 
-    function setupJoinHider(roomData) {
-      currentMapIndex = roomData.mapIndex;
-      existingHiders = roomData.list || [];
-      mode = 'move'; renderMap();
-      pWidth = 80; pHeight = 80;
-      pX = Math.round(mapContainer.clientWidth / 2); pY = Math.round(mapContainer.clientHeight / 2);
-      document.getElementById('ui-move').style.display = 'flex';
-      localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
+      if (roomData) {
+        currentMapIndex = roomData.mapIndex;
+        existingHiders = roomData.list || [];
+        mode = 'move'; renderMap();
+        pWidth = 120; pHeight = 60;
+        pX = Math.round(mapContainer.clientWidth / 2); pY = Math.round(mapContainer.clientHeight / 2);
+        document.getElementById('ui-move').style.display = 'flex';
+        localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
 
-      existingHiders.forEach((data) => {
-        const el = document.createElement('div');
-        el.className = 'player-obj copied breathing';
-        el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
-        el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
-        el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
-        el.style.setProperty('--rot', `${data.rotation}deg`);
-        el.style.backgroundImage = `url(${data.image})`;
-        if(data.hasEye) {
-          const eye = document.createElement('span');
-          eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
-        }
-        mapContainer.appendChild(el);
-      });
+        existingHiders.forEach((data) => {
+          const el = document.createElement('div');
+          el.className = 'player-obj copied breathing';
+          el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
+          el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
+          el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
+          el.style.setProperty('--rot', `${data.rotation}deg`);
+          el.style.backgroundImage = `url(${data.image})`;
+          el.style.backgroundSize = '100% 100%';
+          if(data.hasEye) {
+            const eye = document.createElement('span');
+            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
+          }
+          mapContainer.appendChild(el);
+        });
 
-      gameLoop();
+        gameLoop();
+      } else {
+        location.href = location.pathname;
+      }
     }
 
     initSystem();
