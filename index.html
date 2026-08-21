@@ -419,7 +419,193 @@
           bgCtx.fillText('  }', 35, cy+125);
           cy += 160;
 
-          bgCtx.fillStyle = '#23262
+          bgCtx.fillStyle = '#232629'; bgCtx.font = '15px sans-serif';
+          bgCtx.fillText('This code throws an error. Any suggestions?', 20, cy); cy += 40;
+        }
+      },
+
+      // 5. 극악의 이용약관 (제일 숨기 좋은 맵)
+      function drawTerms() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        
+        bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 24px sans-serif'; bgCtx.fillText('서비스 이용약관', 20, 50);
+        
+        let cy = 100;
+        bgCtx.fillStyle = '#555'; bgCtx.font = '14px sans-serif';
+        for(let i=1; i<=100; i++) {
+          bgCtx.font = 'bold 15px sans-serif'; bgCtx.fillStyle = '#333';
+          bgCtx.fillText(`제 ${i} 조 (목적 및 정의)`, 20, cy); cy += 25;
+          bgCtx.font = '14px sans-serif'; bgCtx.fillStyle = '#666';
+          bgCtx.fillText('① 본 약관은 회사가 제공하는 제반 서비스의 이용과 관련하여 회사와', 20, cy); cy += 22;
+          bgCtx.fillText('회원 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을', 20, cy); cy += 22;
+          bgCtx.fillText('목적으로 합니다. ② "회원"이라 함은 회사의 서비스에 접속하여', 20, cy); cy += 22;
+          bgCtx.fillText('본 약관에 따라 회사와 이용계약을 체결하고 회사가 제공하는', 20, cy); cy += 22;
+          bgCtx.fillText('서비스를 이용하는 고객을 말합니다. ③ 기타 용어의 정의는', 20, cy); cy += 22;
+          bgCtx.fillText('관계 법령 및 서비스별 안내에서 정하는 바에 따릅니다.', 20, cy); cy += 35;
+        }
+      },
+
+      // 6. 나무위키 스타일 (하이퍼링크 지옥)
+      function drawWikiHQ() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        bgCtx.fillStyle = '#f8f9fa'; bgCtx.fillRect(0, 0, w, 60);
+        bgCtx.fillStyle = '#00a495'; bgCtx.font = 'bold 22px serif'; bgCtx.fillText('나무위키', 15, 38);
+        bgCtx.strokeStyle = '#ddd'; bgCtx.beginPath(); bgCtx.moveTo(0,60); bgCtx.lineTo(w,60); bgCtx.stroke();
+        
+        let cy = 100;
+        bgCtx.fillStyle = '#000'; bgCtx.font = '32px serif'; bgCtx.fillText('숨바꼭질', 20, cy); cy += 20;
+        bgCtx.strokeStyle = '#aaa'; bgCtx.beginPath(); bgCtx.moveTo(20,cy); bgCtx.lineTo(w-20,cy); bgCtx.stroke(); cy += 30;
+        
+        // 목차
+        bgCtx.fillStyle = '#f8f9fa'; bgCtx.strokeStyle = '#a2a9b1'; bgCtx.lineWidth = 1;
+        bgCtx.beginPath(); bgCtx.roundRect(20, cy, w-40, 160, 2); bgCtx.fill(); bgCtx.stroke();
+        bgCtx.fillStyle = '#000'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('목차', 35, cy+30);
+        bgCtx.fillStyle = '#0275d8'; bgCtx.font = '15px sans-serif';
+        const tocs = ['1. 개요', '2. 역사', '3. 상세 규칙', '3.1. 숨는 법', '3.2. 찾는 법', '4. 온라인 숨바꼭질'];
+        tocs.forEach((t, i) => { bgCtx.fillText(t, 35 + (t.includes('.') ? 15 : 0), cy+60 + i*22); });
+        cy += 200;
+
+        const wikiWords = ['술래가', '눈을', '감고', '숫자를', '세는', '동안', '다른', '사람들이', '숨고,', '그', '이후', '술래가', '숨은', '사람들을', '찾아내는', '전통적인', '놀이이다.', '최근에는', '인터넷', '환경에서', '보호색을', '이용한', '웹챠', '카멜레온과', '같은', '형태로', '발전하였다.'];
+        
+        bgCtx.font = '16px sans-serif';
+        for(let j=1; j<=20; j++) {
+          bgCtx.fillStyle = '#000'; bgCtx.font = '24px serif'; bgCtx.fillText(`${j}. 내용`, 20, cy); cy += 15;
+          bgCtx.strokeStyle = '#ddd'; bgCtx.beginPath(); bgCtx.moveTo(20,cy); bgCtx.lineTo(w-20,cy); bgCtx.stroke(); cy += 25;
+          bgCtx.font = '16px sans-serif';
+          
+          for(let i=0; i<8; i++) {
+            let txtX = 20;
+            wikiWords.forEach(word => {
+              let rand = seededRandom();
+              if(rand > 0.8) bgCtx.fillStyle = '#0275d8'; // 파란 링크
+              else if(rand > 0.7) bgCtx.fillStyle = '#c0392b'; // 빨간 링크 (없는 문서)
+              else bgCtx.fillStyle = '#222'; // 일반 텍스트
+              bgCtx.fillText(word, txtX, cy);
+              txtX += bgCtx.measureText(word).width + 5;
+              if(txtX > w - 60) { txtX = 20; cy += 28; }
+            });
+            bgCtx.fillStyle = '#0275d8'; bgCtx.font = '11px sans-serif'; bgCtx.fillText(`[${i+1}]`, txtX, cy - 8); // 각주
+            bgCtx.font = '16px sans-serif'; cy += 28;
+          }
+          cy += 20;
+        }
+      },
+
+      // 7. 쇼핑몰 상품 상세 및 Q&A
+      function drawShopQnA() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        bgCtx.fillStyle = '#333'; bgCtx.fillRect(0, 0, w, 50);
+        bgCtx.fillStyle = '#fff'; bgCtx.font = '16px sans-serif'; bgCtx.fillText('상품상세 | 상품평 | Q&A', 20, 32);
+
+        let cy = 80;
+        bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 22px sans-serif'; bgCtx.fillText('상품 Q&A (9,999건)', 20, cy); cy += 40;
+
+        for(let i=0; i<30; i++) {
+          bgCtx.fillStyle = '#333'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('Q. 배송은 언제쯤 되나요?', 20, cy); cy += 25;
+          bgCtx.fillStyle = '#777'; bgCtx.font = '13px sans-serif'; bgCtx.fillText('user_*** | 2026.08.22', 20, cy); cy += 25;
+          
+          bgCtx.fillStyle = '#f4f4f4'; bgCtx.fillRect(20, cy, w-40, 60);
+          bgCtx.fillStyle = '#e74c3c'; bgCtx.font = 'bold 15px sans-serif'; bgCtx.fillText('A.', 30, cy+25);
+          bgCtx.fillStyle = '#333'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('안녕하세요 고객님, 해당 상품은 결제 후', 50, cy+25);
+          bgCtx.fillText('영업일 기준 2~3일 내로 발송됩니다. 감사합니다.', 50, cy+45);
+          cy += 80;
+          bgCtx.strokeStyle = '#eee'; bgCtx.beginPath(); bgCtx.moveTo(20,cy); bgCtx.lineTo(w-20,cy); bgCtx.stroke(); cy += 30;
+        }
+      },
+
+      // 8. 디시인사이드 / 인터넷 커뮤니티 (댓글 폭탄)
+      function drawCommunity() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        
+        bgCtx.fillStyle = '#3b4890'; bgCtx.fillRect(0, 0, w, 50); // 디시 블루
+        bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 20px sans-serif'; bgCtx.fillText('카멜레온 갤러리', 20, 33);
+        
+        let cy = 90;
+        bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 22px sans-serif'; bgCtx.fillText('ㅇㅇ 니네 이거 찾을 수 있냐? ㅋㅋ', 20, cy); cy += 30;
+        bgCtx.fillStyle = '#777'; bgCtx.font = '13px sans-serif'; bgCtx.fillText('ㅇㅇ(118.235) | 10:24 | 조회 1420 | 추천 152', 20, cy); cy += 20;
+        bgCtx.strokeStyle = '#ccc'; bgCtx.beginPath(); bgCtx.moveTo(20,cy); bgCtx.lineTo(w-20,cy); bgCtx.stroke(); cy += 30;
+        
+        bgCtx.fillStyle = '#333'; bgCtx.font = '16px sans-serif';
+        bgCtx.fillText('진짜 힌트 1도 안줌. 3분안에 찾아보셈 ㅅㄱ', 20, cy); cy += 80;
+        
+        bgCtx.fillStyle = '#f4f4f4'; bgCtx.fillRect(0, cy, w, 40);
+        bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('전체 댓글 145개', 20, cy+25); cy += 60;
+
+        for(let i=0; i<40; i++) {
+          let isReply = seededRandom() > 0.7; // 대댓글 여부
+          let x = isReply ? 40 : 20;
+          
+          bgCtx.fillStyle = '#333'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText(isReply ? 'ㄴ ㅇㅇ(211.36)' : 'ㅇㅇ(14.32)', x, cy);
+          bgCtx.fillStyle = '#888'; bgCtx.font = '12px sans-serif'; bgCtx.fillText('10:25', x + 100, cy); cy += 20;
+          
+          bgCtx.fillStyle = '#222'; bgCtx.font = '15px sans-serif';
+          let msg = ["어디 숨었냐 안보이는데", "찾음 ㅋㅋ 글씨 사이에 있네", "와 눈빠지는줄 알았다", "폰트 두께 미세하게 다르네 ㅂㅅ", "못찾겠다 힌트좀", "이걸 어떻게 찾음?"][i%6];
+          bgCtx.fillText(msg, x, cy); cy += 25;
+          bgCtx.strokeStyle = '#f1f1f1'; bgCtx.beginPath(); bgCtx.moveTo(x,cy); bgCtx.lineTo(w-20,cy); bgCtx.stroke(); cy += 20;
+        }
+      },
+
+      // 9. 아침 뉴스레터 (이모지 & 트렌디 포맷)
+      function drawNewsletter() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        bgCtx.fillStyle = '#ff6b00'; bgCtx.fillRect(0, 0, w, 60);
+        bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 24px sans-serif'; bgCtx.textAlign = 'center'; bgCtx.fillText('NEWNEEK', w/2, 40); bgCtx.textAlign = 'left';
+
+        let cy = 120;
+        bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 30px sans-serif'; bgCtx.fillText('카멜레온, 어디까지 숨어봤니?', 20, cy); cy += 50;
+        
+        for(let i=0; i<15; i++) {
+          bgCtx.fillStyle = '#ff6b00'; bgCtx.font = '20px sans-serif'; bgCtx.fillText('🦔 고슴이가 알려줄게!', 20, cy); cy += 35;
+          bgCtx.fillStyle = '#333'; bgCtx.font = '16px sans-serif';
+          bgCtx.fillText('요즘 Z세대 사이에서 유행하는 웹 게임이 있대요.', 20, cy); cy += 28;
+          bgCtx.fillText('바로 텍스트 틈새에 자신을 캡처해 숨기는 방식의', 20, cy); cy += 28;
+          bgCtx.fillStyle = '#000'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('웹챠 카멜레온', 20, cy);
+          bgCtx.fillStyle = '#333'; bgCtx.font = '16px sans-serif'; bgCtx.fillText('이라는 게임인데요.', 125, cy); cy += 28;
+          bgCtx.fillText('단순히 이미지가 아니라 글씨의 폰트와 자간까지', 20, cy); cy += 28;
+          bgCtx.fillText('완벽하게 복사해서 위장한다고 하니, 정말', 20, cy); cy += 28;
+          bgCtx.fillText('눈을 크게 뜨고 찾아야 할 것 같아요! 👀', 20, cy); cy += 60;
+          
+          bgCtx.fillStyle = '#f4f4f4'; bgCtx.beginPath(); bgCtx.roundRect(20, cy, w-40, 80, 10); bgCtx.fill();
+          bgCtx.fillStyle = '#555'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('💡 오늘의 꿀팁', 40, cy+30);
+          bgCtx.font = '14px sans-serif'; bgCtx.fillText('글씨가 빽빽한 위키나 약관 페이지가 숨기 좋아요.', 40, cy+55);
+          cy += 120;
+        }
+      },
+
+      // 10. 전자공시 / 재무제표 (가장 지루하고 숨기 좋은 표 맵)
+      function drawFinancialReport() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        bgCtx.fillStyle = '#f2f2f2'; bgCtx.fillRect(0, 0, w, 50);
+        bgCtx.fillStyle = '#004c99'; bgCtx.font = 'bold 18px sans-serif'; bgCtx.fillText('전자공시시스템 DART', 15, 32);
+        
+        let cy = 100;
+        bgCtx.fillStyle = '#000'; bgCtx.font = 'bold 20px sans-serif'; bgCtx.fillText('연결재무상태표', 20, cy); cy += 30;
+        bgCtx.fillStyle = '#555'; bgCtx.font = '12px sans-serif'; bgCtx.textAlign = 'right'; bgCtx.fillText('(단위: 원)', w-20, cy); bgCtx.textAlign = 'left'; cy += 15;
+
+        // 표 그리기 반복
+        for(let t=0; t<15; t++) {
+          bgCtx.fillStyle = '#e9ecef'; bgCtx.fillRect(20, cy, w-40, 35);
+          bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 13px sans-serif';
+          bgCtx.fillText('과목', 40, cy+22); bgCtx.fillText('제 25 기', w - 100, cy+22); cy += 35;
+          
+          for(let i=0; i<10; i++) {
+            bgCtx.strokeStyle = '#ddd'; bgCtx.beginPath(); bgCtx.moveTo(20,cy); bgCtx.lineTo(w-20,cy); bgCtx.stroke();
+            bgCtx.fillStyle = '#333'; bgCtx.font = '13px sans-serif';
+            let title = ["유동자산", "  현금및현금성자산", "  매출채권", "  재고자산", "비유동자산", "  유형자산", "  무형자산", "자산총계", "유동부채", "자본총계"][i];
+            bgCtx.fillText(title, 25, cy+22);
+            bgCtx.textAlign = 'right'; bgCtx.fillText((seededRandom()*1000000000).toLocaleString().split('.')[0], w - 30, cy+22); bgCtx.textAlign = 'left';
+            cy += 35;
+          }
+          cy += 50;
+        }
+      }
+    ];
 
     function renderMap() {
       bgCanvas.width = scrollWrapper.clientWidth * dpr; 
