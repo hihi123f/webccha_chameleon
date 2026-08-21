@@ -3,109 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>웹챠 카멜레온 V5 - 위장 텐트 하이브리드</title>
+  <title>웹챠 카멜레온 V6 - 스니핑 위장술</title>
   <style>
     body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; touch-action: none; }
     
     /* 상단 UI 바 */
-    #ui { padding: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 10; min-height: 40px; }
-    button, input { padding: 6px 12px; font-weight: bold; cursor: pointer; border-radius: 6px; border: none; font-size: 14px; }
+    #ui { padding: 12px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 10; min-height: 40px; }
+    button { padding: 8px 16px; font-weight: bold; cursor: pointer; border-radius: 6px; border: none; font-size: 15px; transition: transform 0.1s; }
+    button:active { transform: scale(0.95); }
     
-    /* 각 모드별 UI 컨테이너 */
-    #ui-move, #ui-draw, #ui-seek { display: none; gap: 10px; align-items: center; }
-    #ui-move { display: flex; } /* 초기 상태 */
+    #ui-hider, #ui-seeker { display: flex; gap: 10px; align-items: center; }
+    #ui-seeker { display: none; font-size: 18px; }
 
-    #btn-tent { background: #0fb9b1; color: white; padding: 8px 20px; font-size: 16px; }
-    #btn-hide { background: #ff4757; color: white; padding: 8px 20px; font-size: 16px; }
-    .active-tool { border: 2px solid #ffd32a !important; background: #555; color: #ffd32a; }
+    #btn-copy { background: #3498db; color: white; }
+    #btn-eye { background: #f1c40f; color: black; }
+    #btn-hide { background: #e74c3c; color: white; }
     
-    /* 맵 (가짜 주식 차트) */
-    #map-container { position: relative; width: 100vw; height: calc(100vh - 60px); overflow: hidden; cursor: crosshair; }
+    /* 맵 (가짜 웹사이트) */
+    #map-container { position: relative; width: 100vw; height: calc(100vh - 65px); overflow: hidden; background: #fff; cursor: crosshair; }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-    /* 1. 이동 모드: 젤리 캐릭터 */
+    /* 플레이어 (도화지 -> 뷰파인더 -> 스킨) */
     #player {
-      position: absolute; width: 40px; height: 40px;
-      background-color: #fff; border-radius: 50% 50% 40% 40%;
+      position: absolute; width: 60px; height: 60px;
       transform: translate(-50%, -50%); z-index: 5;
-      display: flex; justify-content: center; align-items: center; font-size: 20px;
-      box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+      display: flex; justify-content: center; align-items: center; font-size: 24px;
+      /* 초기 뷰파인더 모드 */
+      border: 2px dashed #e74c3c; background: rgba(231, 76, 60, 0.2);
+      border-radius: 8px; box-sizing: border-box;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
     }
-    .walking { animation: waddle 0.3s infinite alternate; }
-    @keyframes waddle { 0% { transform: translate(-50%, -50%) rotate(-10deg); } 100% { transform: translate(-50%, -50%) rotate(10deg); } }
+    
+    /* 복사 완료 시 스타일 (점선 사라짐) */
+    .copied { border: none !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important; background-color: transparent !important; background-size: cover; background-position: center; }
+    
+    /* 뽈뽈뽈 걷기 */
+    .walking { animation: waddle 0.25s infinite alternate; }
+    @keyframes waddle { 0% { transform: translate(-50%, -50%) rotate(-5deg); } 100% { transform: translate(-50%, -50%) rotate(5deg); } }
 
-    /* 2. 그리기 모드: 캔버스 텐트 */
-    #draw-canvas {
-      position: absolute; display: none;
-      transform: translate(-50%, -50%);
-      border: 2px dashed rgba(255, 211, 42, 0.8);
-      background: rgba(0, 0, 0, 0.1);
-      z-index: 6; cursor: crosshair;
-    }
+    /* 숨기 모드 (숨쉬기) */
+    .breathing { border: none !important; box-shadow: none !important; animation: breath 3s infinite ease-in-out; }
+    @keyframes breath { 0%, 100% { transform: translate(-50%, -50%) scale(1); filter: brightness(1); } 50% { transform: translate(-50%, -50%) scale(1.05); filter: brightness(1.05); } }
 
-    /* 3. 숨기 모드: 숨쉬기 애니메이션 */
-    .breathing {
-      border: none !important; background: transparent !important;
-      animation: breath 4s infinite ease-in-out;
-    }
-    @keyframes breath { 0%, 100% { transform: translate(-50%, -50%) scale(1); filter: brightness(1); } 50% { transform: translate(-50%, -50%) scale(1.03); filter: brightness(1.1); } }
-
-    /* 검거 시: 본체 튀어나옴 */
-    #jelly-busted {
-      position: absolute; display: none; font-size: 50px; z-index: 7;
-      transform: translate(-50%, -50%);
-      animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; 
-    }
+    /* 들켰을 때 본체 */
+    #jelly-busted { position: absolute; display: none; font-size: 50px; z-index: 7; transform: translate(-50%, -50%); filter: drop-shadow(0px 0px 5px red); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; }
     @keyframes popOut { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
     @keyframes tremble { 0%, 100% { margin-left: -3px; } 50% { margin-left: 3px; } }
 
-    /* 화면 진동 효과 */
+    /* 진동 및 텍스트 */
     .shake-screen { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
     @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, -4px, 0); } 40%, 60% { transform: translate3d(8px, 4px, 0); } }
-
-    /* 텍스트 이펙트 */
-    .floating-text { position: absolute; font-weight: 900; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; }
+    .floating-text { position: absolute; font-weight: 900; font-size: 26px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; }
     @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
 
-    /* 조이스틱 */
-    #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%; z-index: 20; touch-action: none; display: none; }
-    #joystick-knob { position: absolute; top: 40px; left: 40px; width: 40px; height: 40px; background: rgba(255,255,255,0.5); border-radius: 50%; }
+    /* 모바일 조이스틱 */
+    #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 120px; height: 120px; background: rgba(0,0,0,0.2); border-radius: 50%; z-index: 20; touch-action: none; display: none; }
+    #joystick-knob { position: absolute; top: 40px; left: 40px; width: 40px; height: 40px; background: rgba(0,0,0,0.5); border-radius: 50%; }
   </style>
 </head>
 <body>
 
   <div id="ui">
-    <!-- 1. 이동 모드 UI -->
-    <div id="ui-move">
-      <span style="color:#aaa;">방향키(WASD)로 명당을 찾으세요!</span>
-      <button id="btn-tent" onclick="setupTent()">🏕️ 위장 텐트 치기 (도화지 펴기)</button>
+    <div id="ui-hider">
+      <button id="btn-copy" onclick="copyBackground()">📸 배경 스캔 (복사)</button>
+      <button id="btn-eye" onclick="toggleEye()">👀 눈알 껐다켜기</button>
+      <button id="btn-hide" onclick="startHiding()">🤫 이대로 주차하기!</button>
     </div>
-
-    <!-- 2. 그리기 모드 UI -->
-    <div id="ui-draw">
-      <button onclick="pickColor()">💉 배경색 뽑기</button>
-      <input type="color" id="color-picker" value="#05c46b">
-      <span style="background:#444; padding:4px 8px; border-radius:6px;">
-        굵기: <input type="range" id="brush-size" min="1" max="20" value="6">
-      </span>
-      <button id="btn-pen" class="active-tool" onclick="setTool('pen')">🖌️ 펜</button>
-      <button id="btn-eraser" onclick="setTool('eraser')">🧹 지우개</button>
-      <button onclick="clearCanvas()">🗑️</button>
-      <button id="btn-hide" onclick="startHiding()">🤫 완벽하게 숨기!</button>
-    </div>
-
-    <!-- 3. 술래 모드 UI -->
-    <div id="ui-seek">
-      <span style="color:#ff4757; font-size:18px;">❤️ <span id="life">3</span></span> | 
-      <span style="color:#ffd32a; font-size:18px;">⏱️ <span id="time">0.00</span>초</span>
+    <div id="ui-seeker">
+      <span style="color:#e74c3c;">❤️ <span id="life">3</span></span> | 
+      <span style="color:#f1c40f;">⏱️ <span id="time">0.00</span>초</span>
     </div>
   </div>
 
   <div id="map-container">
     <canvas id="bg-canvas"></canvas>
     
-    <div id="player">👀</div>
-    <canvas id="draw-canvas" width="100" height="100"></canvas>
+    <div id="player"><span id="face"></span></div>
     <div id="jelly-busted">😳💦</div>
 
     <div id="joystick-zone"><div id="joystick-knob"></div></div>
@@ -116,44 +89,58 @@
     const bgCanvas = document.getElementById('bg-canvas');
     const bgCtx = bgCanvas.getContext('2d');
     const player = document.getElementById('player');
-    const drawCanvas = document.getElementById('draw-canvas');
-    const drawCtx = drawCanvas.getContext('2d');
+    const face = document.getElementById('face');
     
-    let mode = 'move'; // move -> draw -> seek
+    let mode = 'hide'; // hide -> seek -> gameover
     let pX = window.innerWidth / 2, pY = window.innerHeight / 2;
     let vX = 0, vY = 0;
     const speed = 4;
     let keys = {};
     let life = 3, startTime, timerInterval;
 
-    // --- 1. 배경 생성 (가짜 주식차트) ---
-    function drawFakeMap() {
+    // --- 1. 가짜 웹페이지 맵 생성 (UI 요소 혼재) ---
+    function drawFakeWebpage() {
       bgCanvas.width = window.innerWidth; bgCanvas.height = window.innerHeight;
-      bgCtx.fillStyle = '#1e272e'; bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-      bgCtx.strokeStyle = '#2f3640'; bgCtx.lineWidth = 1;
-      for(let i=0; i<bgCanvas.width; i+=40) { bgCtx.beginPath(); bgCtx.moveTo(i, 0); bgCtx.lineTo(i, bgCanvas.height); bgCtx.stroke(); }
-      for(let i=0; i<50; i++) {
-        let x = Math.random() * bgCanvas.width, y = Math.random() * bgCanvas.height;
-        bgCtx.fillStyle = Math.random() > 0.5 ? '#05c46b' : '#ff3f34';
-        bgCtx.fillRect(x, y, 12, Math.random() * 80 + 20);
-        bgCtx.fillRect(x + 5, y - 10, 2, Math.random() * 100 + 40);
+      bgCtx.fillStyle = '#ecf0f1'; bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      
+      // 상단 헤더
+      bgCtx.fillStyle = '#2c3e50'; bgCtx.fillRect(0, 0, bgCanvas.width, 60);
+      bgCtx.fillStyle = 'white'; bgCtx.font = '24px sans-serif'; bgCtx.fillText('My Awesome Web', 20, 38);
+
+      // 더미 텍스트 블록
+      bgCtx.fillStyle = '#7f8c8d'; bgCtx.font = '16px sans-serif';
+      for(let i=0; i<15; i++) {
+        let x = Math.random() * (bgCanvas.width - 200) + 50;
+        let y = Math.random() * (bgCanvas.height - 200) + 100;
+        bgCtx.fillText('Lorem ipsum dolor sit amet...', x, y);
+        bgCtx.fillText('consectetur adipiscing elit.', x, y + 20);
+      }
+
+      // 더미 버튼들 (가장 복사하기 좋은 타겟)
+      const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12'];
+      for(let i=0; i<8; i++) {
+        let bx = Math.random() * (bgCanvas.width - 120) + 20;
+        let by = Math.random() * (bgCanvas.height - 200) + 100;
+        bgCtx.fillStyle = colors[i % colors.length];
+        bgCtx.fillRect(bx, by, 100, 40);
+        bgCtx.fillStyle = 'white'; bgCtx.font = 'bold 16px sans-serif';
+        bgCtx.fillText('CLICK ME', bx + 12, by + 25);
       }
     }
-    drawFakeMap();
-    window.addEventListener('resize', drawFakeMap);
+    drawFakeWebpage();
+    window.addEventListener('resize', drawFakeWebpage);
 
     // --- 2. 이동 로직 ---
     window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
     window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-    // 모바일 조이스틱
     const joyZone = document.getElementById('joystick-zone');
     const joyKnob = document.getElementById('joystick-knob');
     if ('ontouchstart' in window) joyZone.style.display = 'block';
 
     let joyCenter = {x: 60, y: 60};
     joyZone.addEventListener('touchmove', (e) => {
-      if(mode !== 'move') return;
+      if(mode !== 'hide') return;
       e.preventDefault();
       let touchX = e.touches[0].clientX - joyZone.getBoundingClientRect().left;
       let touchY = e.touches[0].clientY - joyZone.getBoundingClientRect().top;
@@ -166,12 +153,12 @@
     joyZone.addEventListener('touchend', () => { vX=0; vY=0; joyKnob.style.transform = `translate(0,0)`; });
 
     function gameLoop() {
-      if (mode === 'move') {
+      if (mode === 'hide') {
         if (keys['w'] || keys['arrowup']) vY = -speed; else if (keys['s'] || keys['arrowdown']) vY = speed; else if (!('ontouchstart' in window)) vY = 0;
         if (keys['a'] || keys['arrowleft']) vX = -speed; else if (keys['d'] || keys['arrowright']) vX = speed; else if (!('ontouchstart' in window)) vX = 0;
 
-        pX = Math.max(20, Math.min(window.innerWidth - 20, pX + vX));
-        pY = Math.max(20, Math.min(window.innerHeight - 20, pY + vY));
+        pX = Math.max(30, Math.min(window.innerWidth - 30, pX + vX));
+        pY = Math.max(30, Math.min(window.innerHeight - 30, pY + vY));
         player.style.left = `${pX}px`; player.style.top = `${pY}px`;
         
         if(vX !== 0 || vY !== 0) player.classList.add('walking'); else player.classList.remove('walking');
@@ -181,105 +168,73 @@
     player.style.left = `${pX}px`; player.style.top = `${pY}px`;
     gameLoop();
 
-    // --- 3. 텐트 설치 (그리기 모드로 전환) ---
-    window.setupTent = () => {
-      mode = 'draw';
-      document.getElementById('ui-move').style.display = 'none';
-      document.getElementById('ui-draw').style.display = 'flex';
-      joyZone.style.display = 'none';
+    // --- 3. 핵심: 배경 복사 (스니핑) 로직 ---
+    window.copyBackground = () => {
+      if(mode !== 'hide') return;
       
-      // 캐릭터를 캔버스로 교체
-      player.style.display = 'none';
-      drawCanvas.style.display = 'block';
-      drawCanvas.style.left = `${pX}px`;
-      drawCanvas.style.top = `${pY}px`;
+      const size = 60; // 뷰파인더 크기와 동일
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = size; tempCanvas.height = size;
+      const tCtx = tempCanvas.getContext('2d');
+      
+      // 현재 내 위치의 배경을 tempCanvas에 복사
+      tCtx.drawImage(bgCanvas, pX - size/2, pY - size/2, size, size, 0, 0, size, size);
+      
+      // Data URL로 변환하여 플레이어 배경으로 씌움
+      const dataUrl = tempCanvas.toDataURL();
+      player.style.backgroundImage = `url(${dataUrl})`;
+      player.classList.add('copied'); // 점선 없애고 이미지 씌우기
+      
+      // 이펙트
+      player.style.transform = 'translate(-50%, -50%) scale(1.2)';
+      setTimeout(() => player.style.transform = 'translate(-50%, -50%) scale(1)', 150);
     };
 
-    // --- 4. 그리기 로직 ---
-    drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
-    let isDrawing = false, tool = 'pen';
-    const colorPicker = document.getElementById('color-picker');
-    const brushSize = document.getElementById('brush-size');
+    window.toggleEye = () => { face.innerText = face.innerText === '👀' ? '' : '👀'; };
 
-    window.setTool = (t) => {
-      tool = t;
-      document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen');
-      document.getElementById('btn-eraser').classList.toggle('active-tool', t === 'eraser');
-      drawCtx.globalCompositeOperation = t === 'eraser' ? 'destination-out' : 'source-over';
-    };
-    window.clearCanvas = () => drawCtx.clearRect(0,0,100,100);
-    
-    window.pickColor = () => {
-      // 캐릭터가 서있는 위치 정중앙의 배경색 추출
-      const pData = bgCtx.getImageData(pX, pY, 1, 1).data;
-      const hex = "#" + (1 << 24 | pData[0] << 16 | pData[1] << 8 | pData[2]).toString(16).slice(1);
-      colorPicker.value = hex;
-    };
-
-    function getMousePos(e) {
-      const rect = drawCanvas.getBoundingClientRect();
-      const cX = e.touches ? e.touches[0].clientX : e.clientX;
-      const cY = e.touches ? e.touches[0].clientY : e.clientY;
-      return { x: cX - rect.left, y: cY - rect.top };
-    }
-    
-    function startDraw(e) { if(mode !== 'draw') return; isDrawing = true; const p = getMousePos(e); drawCtx.beginPath(); drawCtx.moveTo(p.x, p.y); drawCtx.lineWidth = brushSize.value; drawCtx.strokeStyle = colorPicker.value; }
-    function draw(e) { if(!isDrawing || mode !== 'draw') return; e.preventDefault(); const p = getMousePos(e); drawCtx.lineTo(p.x, p.y); drawCtx.stroke(); }
-    function endDraw() { isDrawing = false; }
-    
-    drawCanvas.addEventListener('mousedown', startDraw); drawCanvas.addEventListener('mousemove', draw); window.addEventListener('mouseup', endDraw);
-    drawCanvas.addEventListener('touchstart', startDraw, {passive:false}); drawCanvas.addEventListener('touchmove', draw, {passive:false}); window.addEventListener('touchend', endDraw);
-
-    // --- 5. 숨기 완료 (술래 모드) ---
+    // --- 4. 숨기 완료 및 술래 모드 ---
     window.startHiding = () => {
       mode = 'seek';
-      document.getElementById('ui-draw').style.display = 'none';
-      document.getElementById('ui-seek').style.display = 'flex';
-      drawCanvas.classList.add('breathing');
+      document.getElementById('ui-hider').style.display = 'none';
+      document.getElementById('ui-seeker').style.display = 'flex';
+      joyZone.style.display = 'none';
+      
+      player.classList.add('breathing');
 
       startTime = Date.now();
       timerInterval = setInterval(() => { document.getElementById('time').innerText = ((Date.now() - startTime)/1000).toFixed(2); }, 50);
     };
 
-    // --- 6. 픽셀 퍼펙트 술래 판정 ---
+    // --- 5. 타격 판정 ---
     mapContainer.addEventListener('click', (e) => {
       if(mode !== 'seek') return;
       
-      const rect = drawCanvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const dx = e.clientX - pX;
+      const dy = e.clientY - pY;
+      const distance = Math.sqrt(dx*dx + dy*dy);
 
-      let hit = false;
-      // 1. 클릭이 캔버스 영역 안인지 확인
-      if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
-        // 2. 투명도(Alpha) 값 체크! 투명한 곳(0)을 누르면 헛방임.
-        const pixel = drawCtx.getImageData(x, y, 1, 1).data;
-        if (pixel[3] > 0) hit = true; 
-      }
-
-      if (hit) {
-        // 🎯 정확히 그림이 있는 픽셀을 눌렀음! (검거)
+      // 60x60 크기이므로 반지름 대략 30 안에 들어오면 명중
+      if (distance < 30) {
         clearInterval(timerInterval);
-        drawCanvas.style.display = 'none'; // 껍데기 파괴
+        player.style.display = 'none'; // 위장막 제거
         
         const jelly = document.getElementById('jelly-busted');
         jelly.style.display = 'block';
         jelly.style.left = `${pX}px`; jelly.style.top = `${pY}px`;
         
         mapContainer.classList.add('shake-screen');
-        showFloatingText(e.clientX, e.clientY, `🎯 ${(Date.now()-startTime)/1000}초 컷!`, '#05c46b');
+        showFloatingText(e.clientX, e.clientY, `🎯 ${(Date.now()-startTime)/1000}초 검거!`, '#2ecc71');
         mode = 'gameover';
       } else {
-        // ❌ 헛방! (투명한 곳이나 엉뚱한 배경을 누름)
         life--;
         document.getElementById('life').innerText = life;
         mapContainer.classList.add('shake-screen');
         setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
-        showFloatingText(e.clientX, e.clientY, `❌ 앗!`, '#ff4757');
+        showFloatingText(e.clientX, e.clientY, `❌ 헛방!`, '#e74c3c');
 
         if(life <= 0) {
           clearInterval(timerInterval);
-          alert("목숨 3개를 모두 잃었습니다! 젤리의 완벽한 승리입니다.");
+          alert("목숨을 모두 잃었습니다! 완벽한 위장이었네요 ㅋㅋㅋ");
           mode = 'gameover';
         }
       }
@@ -288,7 +243,7 @@
     function showFloatingText(x, y, text, color) {
       const ft = document.createElement('div');
       ft.className = 'floating-text'; ft.style.color = color; ft.innerText = text;
-      ft.style.left = `${x-30}px`; ft.style.top = `${y-20}px`;
+      ft.style.left = `${x-40}px`; ft.style.top = `${y-20}px`;
       document.body.appendChild(ft);
     }
   </script>
