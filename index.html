@@ -3,117 +3,188 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chameleon.io V2</title>
+  <title>Chameleon.io V3 - 주식차트 위장전</title>
   <style>
-    body { margin: 0; font-family: sans-serif; background: #222; color: white; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
-    #ui { padding: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; background: #333; width: 100%; z-index: 10; box-sizing: border-box; }
-    button, input { padding: 6px 10px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; font-size: 14px; }
-    #btn-hide { background: #ff4757; color: white; padding: 8px 15px; font-size: 16px; }
+    body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
     
-    .active-tool { border: 2px solid #ffd32a !important; background: #555; color: white; }
+    /* 상단 UI 바 */
+    #ui { padding: 12px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; background: #222; border-bottom: 3px solid #444; width: 100%; z-index: 10; box-sizing: border-box; }
+    button, input { padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 6px; border: none; font-size: 14px; transition: 0.1s; }
+    button:active { transform: scale(0.95); }
+    
+    .active-tool { border: 2px solid #ffd32a !important; background: #555; color: #ffd32a; }
+    #btn-hide { background: #ff4757; color: white; padding: 8px 20px; font-size: 16px; box-shadow: 0 4px 0 #c0392b; }
+    #btn-hide:active { box-shadow: 0 0px 0 #c0392b; transform: translateY(4px); }
+    #btn-eyedropper { background: #0fb9b1; color: white; }
 
+    /* 복잡한 주식 차트 배경 */
     #map-container {
       position: relative;
       width: 100%;
-      height: 80vh;
-      background: url('https://picsum.photos/1200/800') no-repeat center/cover;
+      height: calc(100vh - 60px);
+      /* 복잡한 주식 차트 이미지 (Unsplash) */
+      background: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80') no-repeat center/cover;
       overflow: hidden;
     }
 
-    /* 드래그 가능한 도화지 래퍼 */
+    /* 화면 진동 효과 (검거 시) */
+    .shake-screen { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-4px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-8px, -4px, 0); }
+      40%, 60% { transform: translate3d(8px, 4px, 0); }
+    }
+
+    /* 도화지 래퍼 */
     #canvas-wrapper {
       position: absolute;
       top: 50%; left: 50%;
-      width: 100px; height: 100px;
+      width: 120px; height: 120px;
       transform: translate(-50%, -50%);
-      border: 1px dashed #fff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      border: 2px dashed rgba(255, 255, 255, 0.6);
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
       z-index: 2;
     }
 
-    /* 드래그 손잡이 (상단 바) */
+    /* 드래그 손잡이 */
     #drag-handle {
-      width: 100%; height: 15px;
-      background: rgba(255, 255, 255, 0.3);
-      cursor: grab;
+      width: 100%; height: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      cursor: grab; display: flex; justify-content: center; align-items: center;
+      font-size: 10px; color: #fff;
     }
+    #drag-handle::after { content: "==== 드래그 ===="; }
     #drag-handle:active { cursor: grabbing; }
 
-    #draw-canvas { cursor: crosshair; display: block; }
+    #draw-canvas { cursor: none; display: block; } /* 기본 커서 숨김 */
 
+    /* 브러시 크기 미리보기 커서 */
+    #brush-preview {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.8);
+      pointer-events: none; /* 클릭 방해 금지 */
+      transform: translate(-50%, -50%);
+      display: none;
+      z-index: 100;
+      box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    }
+
+    /* 숨쉬기 애니메이션 (위장 완료) */
     .breathing {
       animation: breath 3s infinite ease-in-out;
       border: none !important;
       box-shadow: none !important;
     }
-    .breathing #drag-handle { display: none; } /* 숨을 땐 손잡이 제거 */
+    .breathing #drag-handle { display: none; }
 
     @keyframes breath {
-      0%, 100% { transform: translate(-50%, -50%) scale(1); }
-      50% { transform: translate(-50%, -50%) scale(1.03); }
+      0%, 100% { transform: translate(-50%, -50%) scale(1); filter: brightness(1); }
+      50% { transform: translate(-50%, -50%) scale(1.02); filter: brightness(1.1); }
     }
 
+    /* 들켰을 때 등장하는 젤리 본체 */
     #jelly-body {
-      position: absolute; display: none; font-size: 40px; z-index: 1;
-      animation: tremble 0.1s infinite; 
+      position: absolute; display: none; font-size: 50px; z-index: 1;
+      animation: popOut 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, tremble 0.1s infinite 0.3s; 
+      filter: drop-shadow(0 0 10px rgba(255,0,0,0.5));
     }
-    @keyframes tremble { 0%, 100% { transform: translate(-2px, 1px); } 50% { transform: translate(2px, -1px); } }
+    @keyframes popOut { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+    @keyframes tremble { 0%, 100% { transform: translate(-3px, 2px); } 50% { transform: translate(3px, -2px); } }
 
+    /* 도발 텍스트 */
     .floating-text {
-      position: absolute; color: #ffd32a; font-weight: 900; font-size: 24px;
-      text-shadow: 2px 2px 4px #000; pointer-events: none;
-      animation: floatUp 1.5s ease-out forwards; z-index: 100;
+      position: absolute; color: #fff; font-weight: 900; font-size: 28px;
+      text-shadow: 3px 3px 0 #ff4757, -1px -1px 0 #000;
+      pointer-events: none;
+      animation: floatUp 2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; z-index: 100;
+      white-space: nowrap;
     }
-    @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
+    @keyframes floatUp { 0% { transform: translateY(20px) scale(0.5); opacity: 0; } 20% { transform: translateY(0) scale(1.2); opacity: 1; } 100% { transform: translateY(-60px) scale(1); opacity: 0; } }
   </style>
 </head>
 <body>
 
   <div id="ui">
-    <input type="color" id="color-picker" value="#ff0000">
+    <button id="btn-eyedropper" onclick="pickColor()">💉 배경색 흡수(스포이드)</button>
+    <input type="color" id="color-picker" value="#2ecc71">
     
-    <span style="display:flex; align-items:center; gap:5px;">
-      굵기: <input type="range" id="brush-size" min="1" max="20" value="4">
+    <span style="display:flex; align-items:center; gap:5px; background:#444; padding:4px 10px; border-radius:6px;">
+      굵기: <input type="range" id="brush-size" min="1" max="30" value="8">
     </span>
 
     <button id="btn-pen" class="active-tool" onclick="setTool('pen')">🖌️ 펜</button>
     <button id="btn-eraser" onclick="setTool('eraser')">🧹 지우개</button>
-    <button onclick="clearCanvas()">🗑️ 전체 지우기</button>
+    <button onclick="clearCanvas()">🗑️ 비우기</button>
     
-    <button id="btn-hide" onclick="startHiding()">👀 숨기 완료!</button>
-    <div id="timer-display" style="display:none; font-size: 1.2rem; font-weight:bold;">⏱️ <span id="time">0.00</span>초</div>
+    <button id="btn-hide" onclick="startHiding()">👀 완벽하게 숨기!</button>
+    <div id="timer-display" style="display:none; font-size: 1.2rem; font-weight:bold; color:#ffd32a;">⏱️ <span id="time">0.00</span>초</div>
   </div>
 
   <div id="map-container">
     <div id="canvas-wrapper">
-      <div id="drag-handle" title="여기를 잡고 이동하세요"></div>
-      <canvas id="draw-canvas" width="100" height="85"></canvas>
+      <div id="drag-handle"></div>
+      <canvas id="draw-canvas" width="120" height="100"></canvas>
+      <div id="brush-preview"></div>
     </div>
-    <div id="jelly-body">😳</div>
+    <div id="jelly-body">😳💦</div>
   </div>
 
   <script>
     const canvas = document.getElementById('draw-canvas');
     const ctx = canvas.getContext('2d');
     const wrapper = document.getElementById('canvas-wrapper');
+    const brushPreview = document.getElementById('brush-preview');
+    const colorPicker = document.getElementById('color-picker');
+    const brushSize = document.getElementById('brush-size');
     
     let isDrawing = false;
-    let mode = 'draw'; // draw | seek
-    let tool = 'pen'; // pen | eraser
+    let mode = 'draw'; 
+    let tool = 'pen'; 
     let startTime, timerInterval;
 
-    // --- 부드러운 그리기 세팅 ---
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+
+    // --- 네이티브 스포이드 API (지원 브라우저용) ---
+    async function pickColor() {
+      if (!window.EyeDropper) {
+        alert("이 브라우저는 스포이드 기능을 지원하지 않습니다. 컬러 피커를 직접 사용해주세요!");
+        return;
+      }
+      const eyeDropper = new EyeDropper();
+      try {
+        const result = await eyeDropper.open();
+        colorPicker.value = result.sRGBHex;
+        updateBrushPreview();
+      } catch (e) {
+        console.log("스포이드 취소됨");
+      }
+    }
+
+    // --- 브러시 미리보기 업데이트 ---
+    function updateBrushPreview() {
+      const size = brushSize.value;
+      brushPreview.style.width = `${size}px`;
+      brushPreview.style.height = `${size}px`;
+      brushPreview.style.backgroundColor = tool === 'eraser' ? 'rgba(255,255,255,0.5)' : colorPicker.value;
+      brushPreview.style.border = tool === 'eraser' ? '1px dashed #000' : 'none';
+    }
+    
+    brushSize.addEventListener('input', updateBrushPreview);
+    colorPicker.addEventListener('input', updateBrushPreview);
+    updateBrushPreview(); // 초기화
 
     function setTool(newTool) {
       tool = newTool;
       document.getElementById('btn-pen').classList.toggle('active-tool', tool === 'pen');
       document.getElementById('btn-eraser').classList.toggle('active-tool', tool === 'eraser');
-      // 지우개 모드면 합성 모드를 'destination-out'으로 변경
       ctx.globalCompositeOperation = (tool === 'eraser') ? 'destination-out' : 'source-over';
+      updateBrushPreview();
     }
 
+    // --- 그리기 및 프리뷰 이동 ---
     function getMousePos(evt) {
       const rect = canvas.getBoundingClientRect();
       const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
@@ -121,22 +192,36 @@
       return { x: clientX - rect.left, y: clientY - rect.top };
     }
 
-    function startDraw(e) {
+    wrapper.addEventListener('mousemove', (e) => {
       if (mode !== 'draw') return;
+      brushPreview.style.display = 'block';
+      const pos = getMousePos(e);
+      brushPreview.style.left = `${pos.x}px`;
+      brushPreview.style.top = `${pos.y + 20}px`; // 손잡이 높이 보정
+    });
+
+    wrapper.addEventListener('mouseleave', () => { brushPreview.style.display = 'none'; });
+
+    function startDraw(e) {
+      if (mode !== 'draw' || e.target.id === 'drag-handle') return;
       isDrawing = true;
       const pos = getMousePos(e);
       ctx.beginPath();
       ctx.moveTo(pos.x, pos.y);
-      ctx.lineWidth = document.getElementById('brush-size').value;
-      ctx.strokeStyle = document.getElementById('color-picker').value;
+      ctx.lineWidth = brushSize.value;
+      ctx.strokeStyle = colorPicker.value;
     }
 
     function draw(e) {
       if (!isDrawing || mode !== 'draw') return;
-      e.preventDefault(); // 모바일 터치 스크롤 방지
+      e.preventDefault(); 
       const pos = getMousePos(e);
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
+      
+      // 프리뷰 위치도 같이 업데이트 (터치 대응)
+      brushPreview.style.left = `${pos.x}px`;
+      brushPreview.style.top = `${pos.y + 20}px`;
     }
 
     function endDraw() { isDrawing = false; }
@@ -150,7 +235,7 @@
 
     window.clearCanvas = () => ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // --- 도화지 드래그 이동 로직 ---
+    // --- 도화지 드래그 이동 ---
     const handle = document.getElementById('drag-handle');
     let isDragging = false, dragOffsetX, dragOffsetY;
 
@@ -166,12 +251,14 @@
     });
     window.addEventListener('mouseup', () => { isDragging = false; });
 
-    // --- 숨기 완료 및 검거 로직 ---
+    // --- 숨기 & 검거 (Juice 추가) ---
     window.startHiding = () => {
       mode = 'seek';
       document.getElementById('btn-hide').style.display = 'none';
       document.getElementById('timer-display').style.display = 'block';
+      brushPreview.style.display = 'none';
       wrapper.classList.add('breathing');
+      canvas.style.cursor = 'crosshair'; // 술래 커서로 변경
 
       startTime = Date.now();
       timerInterval = setInterval(() => {
@@ -180,23 +267,28 @@
     };
 
     wrapper.addEventListener('click', (e) => {
-      // 그리기 모드이거나, 드래그 손잡이 클릭 시엔 무시
-      if (mode !== 'seek' || e.target === handle) return;
+      if (mode !== 'seek') return;
       clearInterval(timerInterval);
       
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-      wrapper.style.display = 'none';
+      wrapper.style.display = 'none'; // 위장막 파괴
 
+      // 화면 전체 진동 효과 (타격감)
+      const mapContainer = document.getElementById('map-container');
+      mapContainer.classList.add('shake-screen');
+
+      // 본체 등장 팝업
       const jelly = document.getElementById('jelly-body');
       jelly.style.display = 'block';
-      jelly.style.left = `${wrapper.offsetLeft - 20}px`;
-      jelly.style.top = `${wrapper.offsetTop - 20}px`;
+      jelly.style.left = `${wrapper.offsetLeft - 30}px`;
+      jelly.style.top = `${wrapper.offsetTop - 30}px`;
 
+      // 어그로 텍스트
       const floatingText = document.createElement('div');
       floatingText.className = 'floating-text';
-      floatingText.innerHTML = `🎯 ${elapsed}초 검거!<br><span style="font-size:16px; color:white">"아 굵기 조절 실패했네 ㅋㅋ"</span>`;
-      floatingText.style.left = `${e.clientX - 50}px`;
-      floatingText.style.top = `${e.clientY - 30}px`;
+      floatingText.innerHTML = `🎯 ${elapsed}초 컷!<br><span style="font-size:18px;">"아 양봉인 척 했는데 ㅡㅡ"</span>`;
+      floatingText.style.left = `${e.clientX - 60}px`;
+      floatingText.style.top = `${e.clientY - 40}px`;
       document.body.appendChild(floatingText);
     });
   </script>
