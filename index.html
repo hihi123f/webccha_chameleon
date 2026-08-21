@@ -123,7 +123,8 @@
     <div id="ui-share" class="ui-group" style="display:none;">
       <span id="room-status-text" style="color:#2ecc71; font-size:13px; font-weight:bold;"></span>
       <button class="btn-main" onclick="window.copyLink()">🔗 방 링크 복사</button>
-      <button class="btn-action" onclick="window.startPartySeek()">🔍 술래 시작</button>
+      <!-- 💡 버튼에 id="btn-start-seek" 추가 -->
+      <button class="btn-action" id="btn-start-seek" onclick="window.startPartySeek()">🔍 술래 시작</button>
     </div>
 
     <div id="ui-seek" class="ui-group" style="display:none; width: 100%; justify-content: space-between;">
@@ -871,16 +872,30 @@
       document.getElementById('ui-edit').style.display = 'none';
       document.getElementById('ui-share').style.display = 'flex';
       
-      // 💡 [수정] 9명 강박을 없애고 자유롭게 시작 가능함을 강조!
-      document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (언제든 시작 가능)`;
-      
+      // 💡 [핵심] 방장 여부에 따라 UI 다르게 보여주기
+      const isHost = localStorage.getItem('isHost_' + currentRoomId) === 'true';
+      if (isHost) {
+        document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (방장: 언제든 시작 가능)`;
+        document.getElementById('btn-start-seek').style.display = 'inline-block';
+      } else {
+        document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (방장 대기중...)`;
+        document.getElementById('btn-start-seek').style.display = 'none'; // 방장 아니면 버튼 숨김
+      }
+
       if (isMobile) { actionBtn.style.display = 'none'; }
     }
 
     window.copyLink = () => {
       const shareUrl = `${location.origin}${location.pathname}?room=${currentRoomId}`;
-      // 💡 [수정] 복사 알림창 멘트 변경
-      navigator.clipboard.writeText(shareUrl).then(() => alert("링크 복사 완료! (원하는 인원이 다 숨으면 '술래 시작'을 누르세요)"));
+      navigator.clipboard.writeText(shareUrl).then(() => alert("방 링크 복사 완료! (친구들에게 보내세요)"));
+    };
+
+    window.startPartySeek = () => {
+      // 💡 [핵심] 방장이 누르면 파이어베이스 서버에 '게임 시작' 상태값 전송!
+      if (db) {
+        firebase.database().ref('rooms/' + currentRoomId + '/status').set('seek');
+      }
+      location.href = `${location.origin}${location.pathname}?room=${currentRoomId}&mode=seek`;
     };
 
     // ==========================================
@@ -1111,6 +1126,9 @@
         else await initJoinHider(currentRoomId);
       } else {
         currentRoomId = Math.random().toString(36).substr(2, 6);
+        // 💡 [핵심] 처음에 방을 만든 사람 브라우저에 '방장' 권한 저장
+        localStorage.setItem('isHost_' + currentRoomId, 'true'); 
+        
         currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
         existingHiders = [];
         mode = 'move'; renderMap();
@@ -1133,6 +1151,16 @@
       }
 
       if (roomData) {
+        // 💡 [핵심] 서버에서 'seek(시작)' 신호가 오면 무조건 다같이 술래 모드로 강제 이동!!
+        if (db) {
+          firebase.database().ref('rooms/' + id + '/status').on('value', snap => {
+            if (snap.val() === 'seek') {
+              alert("🚨 방장이 게임을 시작했습니다! 모두 색출 작전에 투입됩니다!");
+              location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
+            }
+          });
+        }
+
         currentMapIndex = roomData.mapIndex;
         existingHiders = roomData.list || [];
         renderMap();
