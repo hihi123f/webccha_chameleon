@@ -34,7 +34,7 @@
     }
     #local-player { border: 2px dashed #e74c3c; background: rgba(231, 76, 60, 0.1); }
     
-    /* 크기 조절 핸들 (터치 및 클릭 확실히 가로채기) */
+    /* 크기 조절 핸들 */
     #resize-handle {
       position: absolute; right: -8px; bottom: -8px; width: 22px; height: 22px;
       background: #f1c40f; border: 2px solid #222; border-radius: 50%; cursor: se-resize; z-index: 25;
@@ -50,7 +50,7 @@
     .walking { animation: waddle 0.25s infinite alternate; }
     @keyframes waddle { 0% { margin-left: -2px; } 100% { margin-left: 2px; } }
 
-    /* 숨쉬기 애니메이션 */
+    /* 숨쉬기 애니메이션 (화질 보존용 1px 무빙) */
     .breathing { box-shadow: none !important; animation: breath 5s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
     @keyframes breath { 
       0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)); } 
@@ -63,13 +63,12 @@
     @keyframes tremble { 0%, 100% { margin-left: -3px; } 50% { margin-left: 3px; } }
 
     .shake-screen { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
-    @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, -4px, 0); } 40%, 60% { transform: translate3d(8px, 4px, 0); } }
-
-    /* 플로팅 텍스트 */
+    @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, -4px, 0); } }
+    
     .floating-text { position: absolute; font-weight: 900; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; white-space: nowrap; }
     @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
 
-    /* 인성질 플로팅 배너 (가볍게 둥둥 뜸) */
+    /* 인성질 플로팅 배너 */
     .taunt-floating-banner {
       position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%);
       background: #ff4757; color: white; padding: 16px 28px; border-radius: 50px;
@@ -93,13 +92,13 @@
   <div id="ui">
     <div style="font-weight:900; color:#3498db; font-size:16px;">🦎 웹챠 카멜레온</div>
 
-    <!-- 1. 이동 모드 -->
+    <!-- 1. 탐색 모드 -->
     <div id="ui-move" class="ui-group" style="display:none;">
-      <span style="font-size:12px; color:#aaa;" id="overlap-warning">노란 점 드래그: 크기조절</span>
+      <span style="font-size:12px; color:#aaa;" id="overlap-warning">노란 점: 크기조절</span>
       <button class="btn-main" onclick="window.copyBackground()">📸 스캔 (Space)</button>
     </div>
     
-    <!-- 2. 편집/그리기 모드 (낙서 도구 복구!) -->
+    <!-- 2. 편집/그리기/주차 모드 -->
     <div id="ui-edit" class="ui-group" style="display:none;">
       <div class="control-box">🔄 <input type="range" id="rot-slider" min="0" max="360" value="0" style="width:50px;"></div>
       <input type="color" id="doodle-color" value="#000000" style="padding:1px; width:28px; height:28px;">
@@ -110,18 +109,20 @@
       <button class="btn-action" onclick="window.finishHiding()">🤫 주차 (Space)</button>
     </div>
 
-    <!-- 3. 대기실 모드 -->
+    <!-- 3. 파티 대기실 -->
     <div id="ui-share" class="ui-group" style="display:none;">
       <span id="room-status-text" style="color:#2ecc71; font-size:13px; font-weight:bold;"></span>
       <button class="btn-main" onclick="window.copyLink()">🔗 방 링크 복사</button>
       <button class="btn-action" onclick="window.startPartySeek()">🔍 술래 시작</button>
     </div>
 
-    <!-- 4. 술래 모드 (넉넉한 제한시간 180초) -->
-    <div id="ui-seek" class="ui-group" style="display:none;">
-      <span style="color:#e74c3c; font-size:16px; font-weight:bold;">❤️ <span id="life">3</span></span>
-      <span style="color:#2ecc71; font-size:16px; font-weight:bold;">남은 타겟: <span id="target-count">1</span></span>
-      <span style="color:#f1c40f; font-size:16px; font-weight:bold;">⏱️ <span id="time">180</span>초</span>
+    <!-- 4. 술래 모드 (상단에 크고 명확하게 제한시간 표시) -->
+    <div id="ui-seek" class="ui-group" style="display:none; width: 100%; justify-content: space-between; padding: 0 10px;">
+      <span style="color:#e74c3c; font-size:18px; font-weight:bold;">❤️ <span id="life">3</span></span>
+      <span style="color:#2ecc71; font-size:16px; font-weight:bold;">남은 타겟: <span id="target-count">1</span>명</span>
+      <span style="background:#ff4757; color:white; padding:4px 14px; border-radius:20px; font-size:18px; font-weight:900; box-shadow:0 3px 6px rgba(0,0,0,0.4); letter-spacing: 1px;">
+        ⏱️ <span id="time">180</span>초
+      </span>
     </div>
 
     <!-- 5. 게임오버 바 -->
@@ -144,6 +145,7 @@
   </div>
 
   <script type="module">
+    // Firebase v12 최신 모듈 임포트
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
 
@@ -161,8 +163,9 @@
     try {
       const app = initializeApp(firebaseConfig);
       db = getDatabase(app);
+      console.log("Firebase 연동 성공!");
     } catch(e) {
-      console.warn("Firebase Bypass -> 로컬 스토리지 사용", e);
+      console.warn("Firebase Init Error -> 로컬 모드로 실행", e);
     }
 
     const mapContainer = document.getElementById('map-container');
@@ -180,7 +183,7 @@
     let vX = 0, vY = 0, rotation = 0;
     const speed = 4;
     let keys = {};
-    let life = 3, timeLeft = 180, timerInterval; // 제한시간 180초 (3분)
+    let life = 3, timeLeft = 180, timerInterval;
     
     let currentRoomId = null;
     let currentMapIndex = 0;
@@ -200,6 +203,7 @@
       return x - Math.floor(x);
     }
 
+    // 맵 7종
     const mapGenerators = [
       function drawYoutube() {
         bgCtx.fillStyle = '#0f0f0f'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
@@ -253,6 +257,15 @@
           bgCtx.fillStyle = '#ff4757'; bgCtx.fillRect(x, y+120, 110, 30);
           bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 13px sans-serif'; bgCtx.fillText('결제하기', x+28, y+140);
         }
+      },
+      function drawCode() {
+        bgCtx.fillStyle = '#282c34'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
+        bgCtx.font = '15px monospace';
+        const codeLines = ['const targets = findChameleon();', 'if (targets.length === 9) { win(); }', 'else { alert("Fail"); }'];
+        for(let i=0; i<12; i++) {
+          bgCtx.fillStyle = ['#e06c75', '#98c379', '#61afef'][i%3];
+          bgCtx.fillText(codeLines[i%3], 40, 50 + i*25);
+        }
       }
     ];
 
@@ -266,7 +279,7 @@
     window.addEventListener('resize', renderMap);
 
     // ==========================================
-    // 🔍 뷰파인더 크기 조절 (드래그 수정)
+    // 🔍 뷰파인더 크기 조절 (드래그 수정 완료)
     // ==========================================
     let isResizing = false;
     function onResizeStart(e) {
@@ -287,7 +300,6 @@
       const currentMouseX = clientX - rect.left;
       const currentMouseY = clientY - rect.top;
 
-      // 중심 좌표(pX, pY) 기준으로 가로/세로 크기 변경
       pWidth = Math.round(Math.max(40, Math.min(300, (currentMouseX - pX) * 2)));
       pHeight = Math.round(Math.max(40, Math.min(300, (currentMouseY - pY) * 2)));
 
@@ -304,7 +316,7 @@
     }, { passive: false });
 
     // ==========================================
-    // 🎨 복사 및 낙서/그리기 시스템 (복구)
+    // 🎨 낙서(Doodle) 시스템 - 회전 좌표 버그 & 커서 편의성 완벽 수정!
     // ==========================================
     let isDrawing = false;
     let drawTool = 'pen';
@@ -314,13 +326,28 @@
       document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen');
       document.getElementById('btn-eraser').classList.toggle('active-tool', t === 'eraser');
       doodleCtx.globalCompositeOperation = t === 'eraser' ? 'destination-out' : 'source-over';
+      
+      // 펜이면 십자선, 지우개면 굵은 네모(셀) 커서로 변경
+      doodleCanvas.style.cursor = t === 'eraser' ? 'cell' : 'crosshair';
     };
 
+    // 💡 회전된 상태에서도 마우스/터치 좌표를 정확히 캔버스에 매핑하는 마법의 수식
     function getDoodlePos(e) {
-      const rect = doodleCanvas.getBoundingClientRect();
-      const cX = e.touches ? e.touches[0].clientX : e.clientX;
-      const cY = e.touches ? e.touches[0].clientY : e.clientY;
-      return { x: cX - rect.left, y: cY - rect.top };
+      const mapRect = mapContainer.getBoundingClientRect();
+      const cX = (e.touches ? e.touches[0].clientX : e.clientX) - mapRect.left;
+      const cY = (e.touches ? e.touches[0].clientY : e.clientY) - mapRect.top;
+      
+      // 1. 화면상의 중심점(pX, pY)에서 마우스까지의 거리
+      const dx = cX - pX;
+      const dy = cY - pY;
+      
+      // 2. CSS로 회전된 각도를 다시 '역회전(-rotation)' 시켜서 원래 좌표 계산 (삼각함수)
+      const rad = -rotation * (Math.PI / 180);
+      const rx = dx * Math.cos(rad) - dy * Math.sin(rad);
+      const ry = dx * Math.sin(rad) + dy * Math.cos(rad);
+      
+      // 3. 캔버스 내부 좌표(0,0은 좌상단이므로 중심값 더해주기)
+      return { x: rx + (pWidth / 2), y: ry + (pHeight / 2) };
     }
 
     doodleCanvas.addEventListener('mousedown', (e) => {
@@ -364,7 +391,20 @@
 
     window.addEventListener('touchend', () => { isDrawing = false; });
 
-    // 스캔 버튼 동작
+
+    // ==========================================
+    // 📸 스캔 & 주차 시스템 (스페이스바 연동)
+    // ==========================================
+    window.addEventListener('keydown', e => { 
+      keys[e.key.toLowerCase()] = true; 
+      if(e.code === 'Space') {
+        e.preventDefault(); 
+        if (mode === 'move') window.copyBackground();
+        else if (mode === 'edit') window.finishHiding();
+      }
+    });
+    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
     window.copyBackground = () => {
       if (mode !== 'move') return;
 
@@ -392,7 +432,7 @@
       document.getElementById('ui-move').style.display = 'none';
       document.getElementById('ui-edit').style.display = 'flex';
 
-      // 낙서 캔버스 활성화
+      // 낙서 캔버스 초기화
       doodleCanvas.style.display = 'block';
       doodleCanvas.width = pWidth;
       doodleCanvas.height = pHeight;
@@ -406,13 +446,11 @@
       localPlayer.style.setProperty('--rot', `${rotation}deg`);
     });
 
-    // 주차 완료 시 이미지 병합 (배경 + 낙서)
     window.finishHiding = async () => {
       if (mode !== 'edit') return;
       const userTaunt = document.getElementById('taunt-input').value.trim();
       if (userTaunt) tauntMessage = userTaunt;
 
-      // 원본 캡처 이미지와 낙서를 하나로 병합
       const mergedCanvas = document.createElement('canvas');
       mergedCanvas.width = pWidth;
       mergedCanvas.height = pHeight;
@@ -422,7 +460,7 @@
       bgImg.src = localPlayer.style.backgroundImage.slice(5, -2);
       await new Promise(r => bgImg.onload = r);
       mCtx.drawImage(bgImg, 0, 0, pWidth, pHeight);
-      mCtx.drawImage(doodleCanvas, 0, 0); // 낙서 덮어쓰기
+      mCtx.drawImage(doodleCanvas, 0, 0); 
 
       const myData = {
         pX: pX, pY: pY, pWidth: pWidth, pHeight: pHeight, rotation: rotation,
@@ -504,7 +542,6 @@
           mapContainer.appendChild(el);
         });
 
-        // 넉넉한 180초 타이머
         timeLeft = 180;
         document.getElementById('time').innerText = timeLeft;
         timerInterval = setInterval(() => {
@@ -572,7 +609,6 @@
       showFloatingBanner(`"${taunt}"`);
     }
 
-    // 가벼운 인성질 플로팅 배너
     function showFloatingBanner(text) {
       const banner = document.createElement('div');
       banner.className = 'taunt-floating-banner';
@@ -588,23 +624,15 @@
     }
 
     // ==========================================
-    // 🚀 이동 및 시스템 초기화
+    // 🕹️ 이동 로직 (스캔 후 'edit' 모드에서도 이동 가능!)
     // ==========================================
-    window.addEventListener('keydown', e => { 
-      keys[e.key.toLowerCase()] = true; 
-      if(e.code === 'Space') {
-        e.preventDefault(); 
-        if (mode === 'move') window.copyBackground();
-        else if (mode === 'edit') window.finishHiding();
-      }
-    });
-    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
-
     const joyZone = document.getElementById('joystick-zone');
     const joyKnob = document.getElementById('joystick-knob');
     let joyCenter = {x: 50, y: 50};
+    
+    // 조이스틱도 edit 모드에서 이동 가능하도록 허용
     joyZone.addEventListener('touchmove', (e) => {
-      if(mode !== 'move') return;
+      if(mode !== 'move' && mode !== 'edit') return;
       e.preventDefault();
       let touchX = e.touches[0].clientX - joyZone.getBoundingClientRect().left;
       let touchY = e.touches[0].clientY - joyZone.getBoundingClientRect().top;
@@ -617,7 +645,8 @@
     joyZone.addEventListener('touchend', () => { vX=0; vY=0; joyKnob.style.transform = `translate(0,0)`; });
 
     function gameLoop() {
-      if (mode === 'move') {
+      // 💡 여기서 mode === 'edit' 일 때도 캐릭터가 움직이도록 수정!!
+      if (mode === 'move' || mode === 'edit') {
         if (keys['w'] || keys['arrowup']) vY = -speed; else if (keys['s'] || keys['arrowdown']) vY = speed; else if (!isMobile) vY = 0;
         if (keys['a'] || keys['arrowleft']) vX = -speed; else if (keys['d'] || keys['arrowright']) vX = speed; else if (!isMobile) vX = 0;
 
