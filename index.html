@@ -158,10 +158,7 @@
   <div id="joy-base"><div id="joy-knob"></div></div>
   <div id="mobile-action-btn">📸</div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
-
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDYmOC4OiW90_8ee0ndpO6xSRSBKJENlws",
       authDomain: "webcchachameleon.firebaseapp.com",
@@ -174,8 +171,8 @@
 
     let db = null;
     try {
-      const app = initializeApp(firebaseConfig);
-      db = getDatabase(app);
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database(); // 💡 V8 안정화 버전으로 완벽 통일
     } catch(e) { console.warn("Firebase 오류 -> 로컬 모드 작동", e); }
 
     // ==========================================
@@ -233,7 +230,7 @@
 
     let comboCount = 0;
     let lastCatchTime = 0;
-    let myScore = 0; // 💡 내 점수 변수 추가
+    let myScore = 0;
 
     const scrollWrapper = document.getElementById('scroll-wrapper');
     const mapContainer = document.getElementById('map-container');
@@ -851,16 +848,15 @@
     };
 
     async function saveData(myData) {
-      // 💡 [핵심 패치] 내 브라우저에 '이 방에 숨었음' 도장 쾅!
       localStorage.setItem('hidden_' + currentRoomId, 'true');
 
       if (db) {
-        const roomRef = ref(db, 'rooms/' + currentRoomId);
-        const snap = await get(roomRef);
+        const roomRef = db.ref('rooms/' + currentRoomId);
+        const snap = await roomRef.once('value');
         let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
         if (!roomData.list) roomData.list = [];
         roomData.list.push(myData);
-        await set(roomRef, roomData);
+        await roomRef.set(roomData);
         showShareScreen(roomData.list.length);
       } else {
         let roomData = JSON.parse(localStorage.getItem('room_' + currentRoomId)) || { mapIndex: currentMapIndex, list: [] };
@@ -875,14 +871,13 @@
       document.getElementById('ui-edit').style.display = 'none';
       document.getElementById('ui-share').style.display = 'flex';
       
-      // 💡 [핵심] 방장 여부에 따라 UI 다르게 보여주기
       const isHost = localStorage.getItem('isHost_' + currentRoomId) === 'true';
       if (isHost) {
         document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (방장: 언제든 시작 가능)`;
         document.getElementById('btn-start-seek').style.display = 'inline-block';
       } else {
         document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (방장 대기중...)`;
-        document.getElementById('btn-start-seek').style.display = 'none'; // 방장 아니면 버튼 숨김
+        document.getElementById('btn-start-seek').style.display = 'none';
       }
 
       if (isMobile) { actionBtn.style.display = 'none'; }
@@ -894,9 +889,8 @@
     };
 
     window.startPartySeek = () => {
-      // 💡 [핵심] 방장이 누르면 파이어베이스 서버에 '게임 시작' 상태값 전송!
       if (db) {
-        firebase.database().ref('rooms/' + currentRoomId + '/status').set('seek');
+        db.ref('rooms/' + currentRoomId + '/status').set('seek');
       }
       location.href = `${location.origin}${location.pathname}?room=${currentRoomId}&mode=seek`;
     };
@@ -907,7 +901,7 @@
     async function initSeeker(id) {
       let roomData = null;
       if (db) {
-        const snap = await get(ref(db, 'rooms/' + id));
+        const snap = await db.ref('rooms/' + id).once('value');
         if (snap.exists()) roomData = snap.val();
       } else {
         const local = localStorage.getItem('room_' + id);
@@ -940,44 +934,41 @@
             const eye = document.createElement('span');
             eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
           }
-          // ... (젤리 렌더링 코드 끝남) ...
-        mapContainer.appendChild(el);
-      });
-
-      // 💡 [핵심] 누군가 젤리를 잡으면 내 화면에서도 실시간으로 지워버림!
-      if (db) {
-        firebase.database().ref('rooms/' + id + '/caught').on('child_added', snap => {
-          const idx = snap.key;
-          const hitTarget = document.getElementById(`target-${idx}`);
-          
-          if (hitTarget) {
-            const caughtData = existingHiders[idx];
-            hitTarget.remove(); // 남이 잡은 젤리는 내 화면에서도 삭제됨
-            
-            const jelly = document.createElement('div');
-            jelly.className = 'jelly-busted'; jelly.innerText = '😳💦';
-            jelly.style.left = `${caughtData.pX}px`; jelly.style.top = `${caughtData.pY}px`;
-            mapContainer.appendChild(jelly);
-
-            mapContainer.classList.add('shake-screen');
-            setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
-
-            const remaining = document.querySelectorAll('.target-obj').length;
-            document.getElementById('target-count').innerText = remaining;
-
-            // 남은 타겟이 0이면 게임 종료
-            if (remaining === 0) {
-              clearInterval(timerInterval);
-              showFloatingBanner(`🎉 색출 종료! (내 최종 점수: ${myScore}점)`);
-              mode = 'gameover';
-              document.getElementById('ui-seek').style.display = 'none';
-              document.getElementById('ui-gameover').style.display = 'flex';
-            }
-          }
+          mapContainer.appendChild(el);
         });
-      }
 
-      timeLeft = 60;
+        if (db) {
+          db.ref('rooms/' + id + '/caught').on('child_added', snap => {
+            const idx = snap.key;
+            const hitTarget = document.getElementById(`target-${idx}`);
+            
+            if (hitTarget) {
+              const caughtData = existingHiders[idx];
+              hitTarget.remove(); 
+              
+              const jelly = document.createElement('div');
+              jelly.className = 'jelly-busted'; jelly.innerText = '😳💦';
+              jelly.style.left = `${caughtData.pX}px`; jelly.style.top = `${caughtData.pY}px`;
+              mapContainer.appendChild(jelly);
+
+              mapContainer.classList.add('shake-screen');
+              setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+
+              const remaining = document.querySelectorAll('.target-obj').length;
+              document.getElementById('target-count').innerText = remaining;
+
+              if (remaining === 0) {
+                clearInterval(timerInterval);
+                showFloatingBanner(`🎉 색출 종료! (내 최종 점수: ${myScore}점)`);
+                mode = 'gameover';
+                document.getElementById('ui-seek').style.display = 'none';
+                document.getElementById('ui-gameover').style.display = 'flex';
+              }
+            }
+          });
+        }
+
+        timeLeft = 60;
         document.getElementById('time').innerText = timeLeft;
         timerInterval = setInterval(() => {
           timeLeft--;
@@ -1001,15 +992,13 @@
       if (hitTarget) {
         const idx = parseInt(hitTarget.id.split('-')[1]);
         
-        // 💡 [핵심] 선착순 1명만 점수 인정 (Transaction)
         if (db) {
-          const catchRef = firebase.database().ref('rooms/' + currentRoomId + '/caught/' + idx);
+          const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + idx);
           catchRef.transaction((current) => {
-            if (current === null) return true; // 아직 아무도 안 잡았으면 내 걸로 기록 시도
-            return; // 이미 누가 0.1초라도 빨리 잡았으면 기록 포기
+            if (current === null) return true; // 아직 아무도 안 잡았으면 내 걸로 기록
+            return; // 0.1초라도 늦었으면 취소
           }, (error, committed) => {
             if (committed) {
-              // 👑 내가 1등으로 잡음!
               myScore += 100;
               document.getElementById('my-score').innerText = myScore;
               
@@ -1027,7 +1016,6 @@
                 showFloatingCombo(e.clientX, e.clientY, text, color);
               }
             } else {
-              // 😭 내가 눌렀는데 찰나의 차이로 남이 먼저 가져감
               showFloatingText(e.clientX, e.clientY, `앗! 남이 먼저 낚아챔`, '#e67e22');
             }
           });
