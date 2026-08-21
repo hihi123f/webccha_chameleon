@@ -1162,7 +1162,7 @@
     async function initJoinHider(id) {
       let roomData = null;
       if (db) {
-        const snap = await get(ref(db, 'rooms/' + id));
+        const snap = await db.ref('rooms/' + id).once('value');
         if (snap.exists()) roomData = snap.val();
       } else {
         const local = localStorage.getItem('room_' + id);
@@ -1170,9 +1170,8 @@
       }
 
       if (roomData) {
-        // 💡 [핵심] 서버에서 'seek(시작)' 신호가 오면 무조건 다같이 술래 모드로 강제 이동!!
         if (db) {
-          firebase.database().ref('rooms/' + id + '/status').on('value', snap => {
+          db.ref('rooms/' + id + '/status').on('value', snap => {
             if (snap.val() === 'seek') {
               alert("🚨 방장이 게임을 시작했습니다! 모두 색출 작전에 투입됩니다!");
               location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
@@ -1184,7 +1183,6 @@
         existingHiders = roomData.list || [];
         renderMap();
 
-        // 이미 기존에 주차된 젤리들 렌더링
         existingHiders.forEach((data) => {
           const el = document.createElement('div');
           el.className = 'player-obj copied breathing';
@@ -1201,27 +1199,19 @@
           mapContainer.appendChild(el);
         });
 
-        // ... (젤리 렌더링 코드 끝남) ...
-        mapContainer.appendChild(el);
-      });
-
-
-        // 💡 [핵심 패치] 이 기기에서 이미 숨은 방인지 검사
         if (localStorage.getItem('hidden_' + id)) {
           alert("이미 이 방에 위장하셨습니다! 친구들을 기다리거나 술래를 시작하세요.");
-          document.getElementById('local-player').style.display = 'none'; // 내 위장 박스 숨김
+          document.getElementById('local-player').style.display = 'none'; 
           showShareScreen(existingHiders.length);
-          return; // 여기서 로직 종료 (이동 불가)
+          return; 
         }
         
-        // 💡 [추가 방어] 방이 9명으로 꽉 찼는지 검사
         if (existingHiders.length >= 9) {
           alert("방이 꽉 찼습니다! (최대 9명) 술래 모드로 자동 시작됩니다.");
           location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
           return;
         }
 
-        // 안 숨었고 자리도 있다면 정상적으로 주차 시작
         mode = 'move';
         pWidth = 120; pHeight = 60;
         pX = Math.round(scrollWrapper.clientWidth / 2); pY = Math.round(scrollWrapper.clientHeight / 2);
