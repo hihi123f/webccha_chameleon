@@ -847,6 +847,9 @@
     };
 
     async function saveData(myData) {
+      // 💡 [핵심 패치] 내 브라우저에 '이 방에 숨었음' 도장 쾅!
+      localStorage.setItem('hidden_' + currentRoomId, 'true');
+
       if (db) {
         const roomRef = ref(db, 'rooms/' + currentRoomId);
         const snap = await get(roomRef);
@@ -1132,12 +1135,9 @@
       if (roomData) {
         currentMapIndex = roomData.mapIndex;
         existingHiders = roomData.list || [];
-        mode = 'move'; renderMap();
-        pWidth = 120; pHeight = 60;
-        pX = Math.round(scrollWrapper.clientWidth / 2); pY = Math.round(scrollWrapper.clientHeight / 2);
-        document.getElementById('ui-move').style.display = 'flex';
-        localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
+        renderMap();
 
+        // 이미 기존에 주차된 젤리들 렌더링
         existingHiders.forEach((data) => {
           const el = document.createElement('div');
           el.className = 'player-obj copied breathing';
@@ -1153,6 +1153,28 @@
           }
           mapContainer.appendChild(el);
         });
+
+        // 💡 [핵심 패치] 이 기기에서 이미 숨은 방인지 검사
+        if (localStorage.getItem('hidden_' + id)) {
+          alert("이미 이 방에 위장하셨습니다! 친구들을 기다리거나 술래를 시작하세요.");
+          document.getElementById('local-player').style.display = 'none'; // 내 위장 박스 숨김
+          showShareScreen(existingHiders.length);
+          return; // 여기서 로직 종료 (이동 불가)
+        }
+        
+        // 💡 [추가 방어] 방이 9명으로 꽉 찼는지 검사
+        if (existingHiders.length >= 9) {
+          alert("방이 꽉 찼습니다! (최대 9명) 술래 모드로 자동 시작됩니다.");
+          location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
+          return;
+        }
+
+        // 안 숨었고 자리도 있다면 정상적으로 주차 시작
+        mode = 'move';
+        pWidth = 120; pHeight = 60;
+        pX = Math.round(scrollWrapper.clientWidth / 2); pY = Math.round(scrollWrapper.clientHeight / 2);
+        document.getElementById('ui-move').style.display = 'flex';
+        localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
 
         gameLoop();
       } else {
