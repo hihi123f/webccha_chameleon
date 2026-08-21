@@ -130,7 +130,7 @@
       <span style="color:#e74c3c; font-size:18px; font-weight:bold;">❤️ <span id="life">3</span></span>
       <span style="color:#2ecc71; font-size:15px; font-weight:bold;">남은 타겟: <span id="target-count">1</span>명</span>
       <span style="background:#ff4757; color:white; padding:4px 14px; border-radius:20px; font-size:16px; font-weight:900; box-shadow:0 3px 6px rgba(0,0,0,0.4);">
-        ⏱️ <span id="time">180</span>초
+        ⏱️ <span id="time">60</span>초
       </span>
     </div>
 
@@ -248,7 +248,7 @@
     let vX = 0, vY = 0, rotation = 0;
     const speed = 4;
     let keys = {};
-    let life = 3, timeLeft = 180, timerInterval;
+    let life = 3, timeLeft = 60, timerInterval;
     
     let currentRoomId = null;
     let currentMapIndex = 0;
@@ -870,17 +870,17 @@
       mode = 'share';
       document.getElementById('ui-edit').style.display = 'none';
       document.getElementById('ui-share').style.display = 'flex';
-      document.getElementById('room-status-text').innerText = `주차 완료! (현재 ${count}/9명)`;
+      
+      // 💡 [수정] 9명 강박을 없애고 자유롭게 시작 가능함을 강조!
+      document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (언제든 시작 가능)`;
+      
       if (isMobile) { actionBtn.style.display = 'none'; }
     }
 
     window.copyLink = () => {
       const shareUrl = `${location.origin}${location.pathname}?room=${currentRoomId}`;
-      navigator.clipboard.writeText(shareUrl).then(() => alert("방 링크 복사 완료! (친구들에게 보내세요)"));
-    };
-
-    window.startPartySeek = () => {
-      location.href = `${location.origin}${location.pathname}?room=${currentRoomId}&mode=seek`;
+      // 💡 [수정] 복사 알림창 멘트 변경
+      navigator.clipboard.writeText(shareUrl).then(() => alert("링크 복사 완료! (원하는 인원이 다 숨으면 '술래 시작'을 누르세요)"));
     };
 
     // ==========================================
@@ -925,7 +925,7 @@
           mapContainer.appendChild(el);
         });
 
-        timeLeft = 180;
+        timeLeft = 60;
         document.getElementById('time').innerText = timeLeft;
         timerInterval = setInterval(() => {
           timeLeft--;
