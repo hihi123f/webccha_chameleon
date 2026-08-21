@@ -12,8 +12,17 @@
   <style>
     body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; }
     
-    #ui { flex-shrink: 0; padding: 8px 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 50; box-sizing: border-box; }
-    .ui-group { display: flex; gap: 8px; align-items: center; }
+    /* 가로 스와이프 가능한 툴바 */
+    #ui { 
+      flex-shrink: 0; padding: 8px 12px; display: flex; gap: 15px; 
+      flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; 
+      align-items: center; background: #222; border-bottom: 3px solid #444; 
+      z-index: 50; box-sizing: border-box; 
+      scrollbar-width: none;
+    }
+    #ui::-webkit-scrollbar { display: none; }
+    
+    .ui-group { display: flex; gap: 8px; align-items: center; white-space: nowrap; flex-shrink: 0; }
     button, input { padding: 6px 12px; font-weight: bold; border-radius: 6px; border: none; font-size: 14px; transition: 0.1s; box-sizing: border-box; }
     button { cursor: pointer; }
     button:active { transform: translateY(2px); }
@@ -21,16 +30,15 @@
     .btn-main { background: #3498db; color: white; }
     .btn-action { background: #e74c3c; color: white; }
     .btn-sub { background: #555; color: white; }
-    .active-tool { border: 2px solid #ffd32a !important; background: #666; color: #ffd32a; }
+    .active-tool { border: 2px solid #ffd32a !important; background: #666 !important; color: #ffd32a; }
 
     .control-box { display: flex; align-items: center; gap: 4px; background: #333; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; }
     .rot-btn { background: #555; color: white; padding: 2px 8px; border-radius: 4px; font-size: 16px; border: none; }
     
     #taunt-input { width: 130px; padding: 5px; background: #fff; color: #111; border: 2px solid #e74c3c; }
 
-    /* 💡 대형 스크롤 맵 구조 */
     #scroll-wrapper { flex-grow: 1; position: relative; overflow-y: auto; overflow-x: hidden; width: 100vw; background: #fff; }
-    #map-container { position: relative; width: 100%; height: 2500px; /* 맵 전체 높이 2500px */ cursor: crosshair; }
+    #map-container { position: relative; width: 100%; height: 2500px; cursor: crosshair; }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
     .player-obj { position: absolute; transform: translate(-50%, -50%); z-index: 5; box-sizing: border-box; display: flex; justify-content: center; align-items: center; background-size: 100% 100%; background-repeat: no-repeat; pointer-events: none; }
@@ -60,21 +68,29 @@
     .floating-text { position: absolute; font-weight: 900; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; white-space: nowrap; }
     @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
 
+    .combo-text { position: absolute; font-weight: 900; font-size: 45px; font-style: italic; text-shadow: 3px 3px 0 #000, 0 0 15px rgba(255,0,0,0.5); pointer-events: none; z-index: 200; white-space: nowrap; animation: comboPop 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    @keyframes comboPop { 0% { transform: translate(-50%, -50%) scale(0.5) rotate(-15deg); opacity: 1; } 20% { transform: translate(-50%, -50%) scale(1.2) rotate(5deg); opacity: 1; } 80% { transform: translate(-50%, -80%) scale(1) rotate(0deg); opacity: 1; } 100% { transform: translate(-50%, -120%) scale(0.8) rotate(0deg); opacity: 0; } }
+
     .taunt-floating-banner { position: fixed; top: 35%; left: 50%; transform: translate(-50%, -50%); background: #ff4757; color: white; padding: 16px 28px; border-radius: 50px; font-size: 22px; font-weight: 900; box-shadow: 0 10px 25px rgba(0,0,0,0.4); z-index: 150; pointer-events: none; border: 4px solid #fff; animation: popTaunt 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; white-space: nowrap; }
     @keyframes popTaunt { 0% { transform: translate(-50%, -50%) scale(0.4) rotate(-10deg); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1) rotate(-3deg); opacity: 1; } }
 
-    /* 고정형 UI (플로팅) */
     #joy-base { position: fixed; width: 100px; height: 100px; background: rgba(0,0,0,0.15); border-radius: 50%; z-index: 60; display: none; pointer-events: none; transform: translate(-50%, -50%); }
     #joy-knob { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; background: rgba(255,255,255,0.8); border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transform: translate(-50%, -50%); }
     
     #mobile-action-btn { position: fixed; bottom: 40px; right: 20px; width: 70px; height: 70px; background: #3498db; border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 60; color: white; font-size: 28px; font-weight: bold; display: none; justify-content: center; align-items: center; cursor: pointer; }
     #mobile-action-btn:active { transform: scale(0.9); }
+
+    @media (max-width: 500px) {
+      button, input { padding: 4px 8px; font-size: 13px; }
+      .control-box { font-size: 12px; }
+      #taunt-input { width: 100px; }
+    }
   </style>
 </head>
 <body>
 
   <div id="ui">
-    <div style="font-weight:900; color:#3498db; font-size:16px;">🦎 웹챠 카멜레온</div>
+    <div class="ui-group" style="font-weight:900; color:#3498db; font-size:16px;">🦎 웹챠 카멜레온</div>
 
     <div id="ui-move" class="ui-group" style="display:none;">
       <span style="font-size:12px; color:#aaa;" id="overlap-warning">좌측:조이스틱 | 우측:스크롤</span>
@@ -82,16 +98,24 @@
     </div>
     
     <div id="ui-edit" class="ui-group" style="display:none;">
+      <!-- 회전 -->
       <div class="control-box">
         🔄 
         <button class="rot-btn" onclick="window.adjustRot(-1)">-</button>
-        <input type="range" id="rot-slider" min="0" max="360" value="0" style="width:70px;">
+        <input type="range" id="rot-slider" min="0" max="360" value="0" style="width:50px;">
         <button class="rot-btn" onclick="window.adjustRot(1)">+</button>
       </div>
-      <input type="color" id="doodle-color" value="#000000" style="padding:1px; width:28px; height:28px;">
-      <button id="btn-pen" class="btn-sub active-tool" onclick="window.setTool('pen')">🖌️</button>
+      <!-- 💡 펜 굵기 -->
+      <div class="control-box">
+        굵기 <input type="range" id="pen-size" min="1" max="30" value="3" style="width:50px;">
+      </div>
+      <!-- 💡 스포이드 및 도구 -->
+      <input type="color" id="doodle-color" value="#000000" style="padding:1px; width:26px; height:26px;">
+      <button id="btn-picker" class="btn-sub" onclick="window.setTool('picker')">💧스포이드</button>
+      <button id="btn-pen" class="btn-sub active-tool" onclick="window.setTool('pen')">🖌️펜</button>
       <button id="btn-eraser" class="btn-sub" onclick="window.setTool('eraser')">🧹</button>
       <button class="btn-sub" onclick="window.toggleEye()">👀</button>
+
       <input type="text" id="taunt-input" placeholder="인성질 멘트" maxlength="20">
       <button class="btn-action" id="btn-hide" onclick="window.finishHiding()">🤫 주차 (Space)</button>
     </div>
@@ -102,10 +126,10 @@
       <button class="btn-action" onclick="window.startPartySeek()">🔍 술래 시작</button>
     </div>
 
-    <div id="ui-seek" class="ui-group" style="display:none; width: 100%; justify-content: space-between; padding: 0 10px;">
+    <div id="ui-seek" class="ui-group" style="display:none; width: 100%; justify-content: space-between;">
       <span style="color:#e74c3c; font-size:18px; font-weight:bold;">❤️ <span id="life">3</span></span>
-      <span style="color:#2ecc71; font-size:16px; font-weight:bold;">남은 타겟: <span id="target-count">1</span>명</span>
-      <span style="background:#ff4757; color:white; padding:4px 14px; border-radius:20px; font-size:18px; font-weight:900; box-shadow:0 3px 6px rgba(0,0,0,0.4); letter-spacing: 1px;">
+      <span style="color:#2ecc71; font-size:15px; font-weight:bold;">남은 타겟: <span id="target-count">1</span>명</span>
+      <span style="background:#ff4757; color:white; padding:4px 14px; border-radius:20px; font-size:16px; font-weight:900; box-shadow:0 3px 6px rgba(0,0,0,0.4);">
         ⏱️ <span id="time">180</span>초
       </span>
     </div>
@@ -115,7 +139,6 @@
     </div>
   </div>
 
-  <!-- 💡 스크롤 래퍼 추가 -->
   <div id="scroll-wrapper">
     <div id="map-container">
       <canvas id="bg-canvas"></canvas>
@@ -133,7 +156,6 @@
   <div id="mobile-action-btn">📸</div>
 
   <script type="module">
-    // Firebase 연동
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
 
@@ -151,7 +173,63 @@
     try {
       const app = initializeApp(firebaseConfig);
       db = getDatabase(app);
-    } catch(e) { console.warn("Firebase 연결 실패 -> 로컬 모드로 작동합니다.", e); }
+    } catch(e) { console.warn("Firebase 오류 -> 로컬 모드 작동", e); }
+
+    // ==========================================
+    // 🔊 자체 Web Audio API 사운드 엔진
+    // ==========================================
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSound(type, pitchMultiplier = 1) {
+      initAudio();
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      const t = audioCtx.currentTime;
+
+      if (type === 'shutter') {
+        const bufferSize = audioCtx.sampleRate * 0.1;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'highpass'; filter.frequency.value = 1000;
+        noise.connect(filter); filter.connect(gainNode);
+        gainNode.gain.setValueAtTime(1, t); gainNode.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        noise.start(t); noise.stop(t + 0.1);
+      } 
+      else if (type === 'pop') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800 * pitchMultiplier, t);
+        osc.frequency.exponentialRampToValueAtTime(200 * pitchMultiplier, t + 0.1);
+        gainNode.gain.setValueAtTime(1, t); gainNode.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.start(t); osc.stop(t + 0.1);
+      }
+      else if (type === 'catch') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300 * pitchMultiplier, t);
+        osc.frequency.exponentialRampToValueAtTime(800 * pitchMultiplier, t + 0.2);
+        gainNode.gain.setValueAtTime(0.8, t); gainNode.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+        osc.start(t); osc.stop(t + 0.3);
+      }
+      else if (type === 'miss') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(120, t);
+        osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
+        gainNode.gain.setValueAtTime(0.5, t); gainNode.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+        osc.start(t); osc.stop(t + 0.15);
+      }
+    }
+
+    let comboCount = 0;
+    let lastCatchTime = 0;
 
     const scrollWrapper = document.getElementById('scroll-wrapper');
     const mapContainer = document.getElementById('map-container');
@@ -160,6 +238,7 @@
     const localPlayer = document.getElementById('local-player');
     const resizeHandle = document.getElementById('resize-handle');
     const rotSlider = document.getElementById('rot-slider');
+    const penSizeSlider = document.getElementById('pen-size');
     const localFace = document.getElementById('local-face');
     const doodleCanvas = document.getElementById('doodle-canvas');
     const doodleCtx = doodleCanvas.getContext('2d');
@@ -177,7 +256,7 @@
     let existingHiders = [];
     let tauntMessage = "시력 장식이냐? 젤리 승리 ㅋㅋ";
 
-    const MAP_HEIGHT = 2500; // 대형 맵 (2500px)
+    const MAP_HEIGHT = 2500; 
     const dpr = window.devicePixelRatio || 1;
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     
@@ -193,24 +272,17 @@
       return x - Math.floor(x);
     }
 
-    // ==========================================
-    // 🎨 2500px 디테일 맵 생성기 (스크롤 콘텐츠)
-    // ==========================================
     const mapGenerators = [
       function drawYoutube() {
         bgCtx.fillStyle = '#0f0f0f'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, MAP_HEIGHT);
         let w = bgCanvas.width/dpr;
-        // 상단 영상
         bgCtx.fillStyle = '#000'; bgCtx.fillRect(0, 0, w, 220);
-        bgCtx.fillStyle = '#ff0000'; bgCtx.fillRect(0, 215, w*0.4, 5); // 진행바
-        // 제목 및 정보
+        bgCtx.fillStyle = '#ff0000'; bgCtx.fillRect(0, 215, w*0.4, 5); 
         bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 18px sans-serif'; bgCtx.fillText('웹챠 9인 합방 레전드 하이라이트 (스압주의)', 15, 250);
         bgCtx.fillStyle = '#aaa'; bgCtx.font = '13px sans-serif'; bgCtx.fillText('조회수 1,424,301회 • 3일 전', 15, 275);
-        // 채널
         bgCtx.beginPath(); bgCtx.arc(30, 320, 18, 0, Math.PI*2); bgCtx.fillStyle='#ff4757'; bgCtx.fill();
         bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('웹챠 오피셜', 60, 315);
         bgCtx.fillStyle = '#aaa'; bgCtx.font = '12px sans-serif'; bgCtx.fillText('구독자 99.9만명', 60, 335);
-        // 댓글 20개 (스크롤 유도)
         bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('댓글 9,999개', 15, 390);
         for(let i=0; i<20; i++) {
           let y = 430 + (i * 80);
@@ -221,7 +293,6 @@
           let msg = ["진짜 저기 숨은거 레전드다 ㅋㅋ", "술래 눈 삐었음?", "와 이걸 어떻게 찾냐", "나도 저렇게 숨고싶다", "방송 개꿀잼이네 ㅋㅋㅋ"][i%5];
           bgCtx.fillText(msg, 55, y+25);
         }
-        // 다음 동영상 리스트
         bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('다음 동영상', 15, 2080);
         for(let i=0; i<4; i++) {
           let y = 2100 + (i * 90);
@@ -233,10 +304,8 @@
       function drawShop() {
         bgCtx.fillStyle = '#f8f9fa'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, MAP_HEIGHT);
         let w = bgCanvas.width/dpr;
-        // 상단 배너
         bgCtx.fillStyle = '#ff4757'; bgCtx.fillRect(0, 0, w, 150);
         bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 24px sans-serif'; bgCtx.textAlign="center"; bgCtx.fillText('웹챠 블랙프라이데이 99% 할인!', w/2, 80); bgCtx.textAlign="left";
-        // 상품 16개 (그리드)
         for(let i=0; i<16; i++) {
           let x = (i%2) * (w/2) + 15;
           let y = 180 + Math.floor(i/2) * 220;
@@ -246,7 +315,6 @@
           bgCtx.fillStyle = '#3498db'; bgCtx.fillRect(x, y+175, (w/2)-25, 30);
           bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 13px sans-serif'; bgCtx.fillText('장바구니', x+35, y+195);
         }
-        // 리뷰 섹션
         let reviewY = 1950;
         bgCtx.fillStyle = '#222'; bgCtx.fillRect(0, reviewY, w, 550);
         bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 18px sans-serif'; bgCtx.fillText('베스트 구매 평', 15, reviewY + 40);
@@ -260,16 +328,13 @@
 
     function renderMap() {
       bgCanvas.width = scrollWrapper.clientWidth * dpr; 
-      bgCanvas.height = MAP_HEIGHT * dpr; // 고정 2500px
+      bgCanvas.height = MAP_HEIGHT * dpr; 
       bgCtx.scale(dpr, dpr); 
       roomSeed = currentMapIndex + 100;
       mapGenerators[currentMapIndex % mapGenerators.length]();
     }
     window.addEventListener('resize', renderMap);
 
-    // ==========================================
-    // 🔍 뷰파인더 크기 조절
-    // ==========================================
     let isResizing = false;
     function onResizeStart(e) {
       if (mode !== 'move') return;
@@ -285,7 +350,7 @@
       if (!isResizing || mode !== 'move') return;
       const rect = mapContainer.getBoundingClientRect();
       const currentMouseX = clientX - rect.left;
-      const currentMouseY = clientY - rect.top; // 스크롤 보정됨
+      const currentMouseY = clientY - rect.top; 
 
       pWidth = Math.round(Math.max(40, Math.min(300, (currentMouseX - pX) * 2)));
       pHeight = Math.round(Math.max(40, Math.min(300, (currentMouseY - pY) * 2)));
@@ -296,9 +361,8 @@
       if (isResizing) { e.preventDefault(); handleResizeMove(e.touches[0].clientX, e.touches[0].clientY); }
     }, { passive: false });
 
-
     // ==========================================
-    // 🎨 낙서 (회전 좌표 완벽 매핑)
+    // 🎨 💡 [핵심 패치] 스포이드 & 그리기 도구
     // ==========================================
     let isDrawing = false; let drawTool = 'pen';
     
@@ -306,8 +370,21 @@
       drawTool = t;
       document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen');
       document.getElementById('btn-eraser').classList.toggle('active-tool', t === 'eraser');
-      doodleCtx.globalCompositeOperation = t === 'eraser' ? 'destination-out' : 'source-over';
-      doodleCanvas.style.cursor = t === 'eraser' ? 'cell' : 'crosshair';
+      document.getElementById('btn-picker').classList.toggle('active-tool', t === 'picker');
+      
+      if (t === 'eraser') {
+        doodleCtx.globalCompositeOperation = 'destination-out';
+        doodleCanvas.style.cursor = 'cell';
+        mapContainer.style.cursor = 'crosshair';
+      } else if (t === 'picker') {
+        doodleCtx.globalCompositeOperation = 'source-over';
+        doodleCanvas.style.cursor = 'crosshair';
+        mapContainer.style.cursor = 'crosshair'; // 스포이드 활성화
+      } else {
+        doodleCtx.globalCompositeOperation = 'source-over';
+        doodleCanvas.style.cursor = 'crosshair';
+        mapContainer.style.cursor = 'crosshair';
+      }
     };
 
     function getDoodlePos(e) {
@@ -323,25 +400,65 @@
       return { x: rx + (pWidth / 2), y: ry + (pHeight / 2) };
     }
 
+    // 💡 배경에서 색상을 추출하는 함수
+    function extractColor(clientX, clientY) {
+      const mapRect = mapContainer.getBoundingClientRect();
+      const cX = clientX - mapRect.left;
+      const cY = clientY - mapRect.top;
+      
+      // 캔버스 범위를 넘어서면 무시
+      let px = Math.max(0, Math.min(bgCanvas.width - 1, cX * dpr));
+      let py = Math.max(0, Math.min(bgCanvas.height - 1, cY * dpr));
+      
+      const pixel = bgCtx.getImageData(px, py, 1, 1).data;
+      const hex = "#" + (1 << 24 | pixel[0] << 16 | pixel[1] << 8 | pixel[2]).toString(16).slice(1);
+      
+      document.getElementById('doodle-color').value = hex;
+      window.setTool('pen'); // 추출 후 자동으로 펜 모드 복귀
+    }
+
     function startDraw(e) {
       if (mode !== 'edit') return;
+
+      // 💡 스포이드 모드일 경우 그리지 않고 색상만 추출
+      if (drawTool === 'picker') {
+        const cX = e.touches ? e.touches[0].clientX : e.clientX;
+        const cY = e.touches ? e.touches[0].clientY : e.clientY;
+        extractColor(cX, cY);
+        return;
+      }
+
       isDrawing = true; const p = getDoodlePos(e);
-      doodleCtx.beginPath(); doodleCtx.moveTo(p.x, p.y); doodleCtx.lineWidth = 3;
-      doodleCtx.lineCap = 'round'; doodleCtx.strokeStyle = document.getElementById('doodle-color').value;
+      doodleCtx.beginPath(); doodleCtx.moveTo(p.x, p.y); 
+      doodleCtx.lineWidth = penSizeSlider.value; // 슬라이더 두께 적용
+      doodleCtx.lineCap = 'round'; 
+      doodleCtx.strokeStyle = document.getElementById('doodle-color').value;
     }
+    
     function draw(e) {
-      if (!isDrawing || mode !== 'edit') return;
+      if (!isDrawing || mode !== 'edit' || drawTool === 'picker') return;
       if (e.touches) e.preventDefault(); 
       const p = getDoodlePos(e); doodleCtx.lineTo(p.x, p.y); doodleCtx.stroke();
     }
     
+    // 캐릭터 내부 터치
     doodleCanvas.addEventListener('mousedown', startDraw);
     doodleCanvas.addEventListener('mousemove', draw);
     window.addEventListener('mouseup', () => { isDrawing = false; });
-    
     doodleCanvas.addEventListener('touchstart', startDraw, { passive: false });
     doodleCanvas.addEventListener('touchmove', draw, { passive: false });
     window.addEventListener('touchend', () => { isDrawing = false; });
+
+    // 💡 캐릭터 외부 (배경 맵) 터치 시 스포이드 추출 허용
+    function handleBgPicker(e) {
+      if (mode === 'edit' && drawTool === 'picker') {
+        const cX = e.touches ? e.touches[0].clientX : e.clientX;
+        const cY = e.touches ? e.touches[0].clientY : e.clientY;
+        extractColor(cX, cY);
+      }
+    }
+    mapContainer.addEventListener('mousedown', handleBgPicker);
+    mapContainer.addEventListener('touchstart', handleBgPicker);
 
     // ==========================================
     // 🎛️ 회전 및 스캔 & 주차 시스템
@@ -385,6 +502,7 @@
 
       const isOverlap = existingHiders.some(h => Math.hypot(h.pX - pX, h.pY - pY) < 45);
       if (isOverlap) {
+        playSound('miss'); 
         document.getElementById('overlap-warning').innerText = "⚠️ 이미 선점된 자리!";
         document.getElementById('overlap-warning').style.color = "#ff4757";
         setTimeout(() => {
@@ -393,6 +511,8 @@
         }, 1500);
         return;
       }
+
+      playSound('shutter');
 
       const tCanvas = document.createElement('canvas');
       const sw = Math.round(pWidth * dpr), sh = Math.round(pHeight * dpr);
@@ -418,6 +538,8 @@
     
     window.finishHiding = async () => {
       if (mode !== 'edit') return;
+      playSound('pop'); 
+
       const userTaunt = document.getElementById('taunt-input').value.trim();
       if (userTaunt) tauntMessage = userTaunt;
 
@@ -478,7 +600,7 @@
     };
 
     // ==========================================
-    // 🕵️ 술래 모드 (스크롤 맵 지원)
+    // 🕵️ 술래 모드
     // ==========================================
     async function initSeeker(id) {
       let roomData = null;
@@ -538,8 +660,16 @@
     mapContainer.addEventListener('click', (e) => {
       if (mode !== 'seek') return;
       const hitTarget = e.target.closest('.target-obj');
+      const now = Date.now();
 
       if (hitTarget) {
+        if (now - lastCatchTime < 3000) comboCount++; 
+        else comboCount = 1;
+        lastCatchTime = now;
+
+        const pitchMultiplier = 1 + (comboCount * 0.15); 
+        playSound('catch', pitchMultiplier); 
+
         const idx = parseInt(hitTarget.id.split('-')[1]);
         const caughtData = existingHiders[idx];
         hitTarget.remove(); 
@@ -551,7 +681,15 @@
 
         mapContainer.classList.add('shake-screen');
         setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
-        showFloatingText(e.clientX, e.clientY, `🎯 검거!`, '#2ecc71');
+
+        if (comboCount >= 2) {
+          let text = "DOUBLE KILL!"; let color = "#f1c40f";
+          if (comboCount === 3) { text = "TRIPLE KILL!"; color = "#e67e22"; }
+          else if (comboCount >= 4) { text = "UNSTOPPABLE!!"; color = "#ff4757"; }
+          showFloatingCombo(e.clientX, e.clientY, text, color);
+        } else {
+          showFloatingText(e.clientX, e.clientY, `🎯 검거!`, '#2ecc71');
+        }
 
         const remaining = document.querySelectorAll('.target-obj').length;
         document.getElementById('target-count').innerText = remaining;
@@ -564,6 +702,9 @@
           document.getElementById('ui-gameover').style.display = 'flex';
         }
       } else {
+        playSound('miss'); 
+        comboCount = 0; 
+        
         life--;
         document.getElementById('life').innerText = life;
         mapContainer.classList.add('shake-screen');
@@ -590,22 +731,29 @@
       const banner = document.createElement('div');
       banner.className = 'taunt-floating-banner';
       banner.innerText = text;
-      document.body.appendChild(banner); // Fixed position so attach to body
+      document.body.appendChild(banner); 
     }
 
     function showFloatingText(x, y, text, color) {
       const ft = document.createElement('div');
       ft.className = 'floating-text'; ft.style.color = color; ft.innerText = text;
-      
-      // 스크롤 위치 보정
       const rect = mapContainer.getBoundingClientRect();
       ft.style.left = `${x - rect.left - 40}px`; 
       ft.style.top = `${y - rect.top - 20}px`;
       mapContainer.appendChild(ft);
     }
 
+    function showFloatingCombo(x, y, text, color) {
+      const ft = document.createElement('div');
+      ft.className = 'combo-text'; ft.style.color = color; ft.innerText = text;
+      const rect = mapContainer.getBoundingClientRect();
+      ft.style.left = `${x - rect.left}px`; 
+      ft.style.top = `${y - rect.top}px`;
+      mapContainer.appendChild(ft);
+    }
+
     // ==========================================
-    // 🕹️ 💡 [핵심 패치] 반반 컨트롤 (좌: 조이스틱, 우: 스크롤)
+    // 🕹️ 반반 컨트롤 
     // ==========================================
     let isJoystickActive = false;
     let joyBase = document.getElementById('joy-base');
@@ -614,62 +762,37 @@
     const MAX_JOY_RADIUS = 40;
     const JOY_SPEED = 1.2; 
     
-    // wrapper에 이벤트 리스너를 달아 좌우를 구분합니다.
     scrollWrapper.addEventListener('touchstart', (e) => {
       if(mode !== 'move' && mode !== 'edit') return;
       if(e.target.closest('#resize-handle') || e.target.closest('#mobile-action-btn') || e.target.closest('#doodle-canvas')) return;
       
       const touch = e.touches[0];
-      // 💡 화면의 '왼쪽 절반'을 터치했을 때만 조이스틱 발동
       if (touch.clientX < window.innerWidth / 2) {
         isJoystickActive = true;
-        joyStart.x = touch.clientX;
-        joyStart.y = touch.clientY;
-        
-        joyBase.style.left = `${joyStart.x}px`;
-        joyBase.style.top = `${joyStart.y}px`;
-        joyBase.style.display = 'block';
-        joyKnob.style.transform = `translate(-50%, -50%)`;
-        vX = 0; vY = 0;
-        
-        // 조이스틱을 쓸 때는 스크롤 방지
-        e.preventDefault(); 
+        joyStart.x = touch.clientX; joyStart.y = touch.clientY;
+        joyBase.style.left = `${joyStart.x}px`; joyBase.style.top = `${joyStart.y}px`;
+        joyBase.style.display = 'block'; joyKnob.style.transform = `translate(-50%, -50%)`;
+        vX = 0; vY = 0; e.preventDefault(); 
       }
-      // 오른쪽 터치는 아무것도 안함 -> 기본 브라우저 스크롤 작동!
     }, {passive: false});
 
     window.addEventListener('touchmove', (e) => {
       if(!isJoystickActive) return;
       e.preventDefault();
       const touch = e.touches[0];
-      
-      let dx = touch.clientX - joyStart.x;
-      let dy = touch.clientY - joyStart.y;
+      let dx = touch.clientX - joyStart.x; let dy = touch.clientY - joyStart.y;
       let dist = Math.hypot(dx, dy);
-      
-      if(dist > MAX_JOY_RADIUS) {
-        dx = (dx / dist) * MAX_JOY_RADIUS;
-        dy = (dy / dist) * MAX_JOY_RADIUS;
-      }
-      
+      if(dist > MAX_JOY_RADIUS) { dx = (dx / dist) * MAX_JOY_RADIUS; dy = (dy / dist) * MAX_JOY_RADIUS; }
       joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-      vX = (dx / MAX_JOY_RADIUS) * JOY_SPEED;
-      vY = (dy / MAX_JOY_RADIUS) * JOY_SPEED;
+      vX = (dx / MAX_JOY_RADIUS) * JOY_SPEED; vY = (dy / MAX_JOY_RADIUS) * JOY_SPEED;
     }, {passive: false});
 
     function endJoy() {
-      if(isJoystickActive) {
-        isJoystickActive = false;
-        joyBase.style.display = 'none';
-        vX = 0; vY = 0;
-      }
+      if(isJoystickActive) { isJoystickActive = false; joyBase.style.display = 'none'; vX = 0; vY = 0; }
     }
     window.addEventListener('touchend', endJoy);
     window.addEventListener('touchcancel', endJoy);
 
-    // ==========================================
-    // 🎥 💡 [핵심 패치] 자동 카메라 팔로우 시스템
-    // ==========================================
     function gameLoop() {
       if (mode === 'move' || mode === 'edit') {
         if (!isJoystickActive) {
@@ -678,17 +801,15 @@
           if (keys['a'] || keys['arrowleft']) vX = -speed; else if (keys['d'] || keys['arrowright']) vX = speed;
         }
 
-        // x, y 경계 처리 (높이가 MAP_HEIGHT(2500)으로 늘어남!)
         pX = Math.round(Math.max(pWidth/2, Math.min(scrollWrapper.clientWidth - pWidth/2, pX + vX)));
         pY = Math.round(Math.max(pHeight/2, Math.min(MAP_HEIGHT - pHeight/2, pY + vY)));
         localPlayer.style.left = `${pX}px`; localPlayer.style.top = `${pY}px`;
         
         if(vX !== 0 || vY !== 0) localPlayer.classList.add('walking'); else localPlayer.classList.remove('walking');
 
-        // 💡 화면 상/하단으로 이동 시 카메라(스크롤) 자동 따라가기
         if (vY !== 0) {
           const screenY = pY - scrollWrapper.scrollTop;
-          const margin = 150; // 상하단 여백
+          const margin = 150; 
           if (screenY < margin) scrollWrapper.scrollTop -= Math.abs(vY);
           else if (screenY > scrollWrapper.clientHeight - margin) scrollWrapper.scrollTop += Math.abs(vY);
         }
@@ -710,8 +831,7 @@
         existingHiders = [];
         mode = 'move'; renderMap();
         pWidth = 120; pHeight = 60;
-        pX = Math.round(scrollWrapper.clientWidth / 2); 
-        pY = Math.round(scrollWrapper.clientHeight / 2); // 시작 시 화면 중앙
+        pX = Math.round(scrollWrapper.clientWidth / 2); pY = Math.round(scrollWrapper.clientHeight / 2); 
         document.getElementById('ui-move').style.display = 'flex';
         localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
         gameLoop();
@@ -733,8 +853,7 @@
         existingHiders = roomData.list || [];
         mode = 'move'; renderMap();
         pWidth = 120; pHeight = 60;
-        pX = Math.round(scrollWrapper.clientWidth / 2); 
-        pY = Math.round(scrollWrapper.clientHeight / 2);
+        pX = Math.round(scrollWrapper.clientWidth / 2); pY = Math.round(scrollWrapper.clientHeight / 2);
         document.getElementById('ui-move').style.display = 'flex';
         localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
 
@@ -759,6 +878,9 @@
         location.href = location.pathname;
       }
     }
+
+    window.addEventListener('touchstart', initAudio, { once: true });
+    window.addEventListener('click', initAudio, { once: true });
 
     initSystem();
   </script>
