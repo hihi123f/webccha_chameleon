@@ -3,84 +3,98 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>웹챠 카멜레온 V7 - 랜덤 맵 & 스니핑</title>
+  <title>웹챠 카멜레온 V7.1 - 완벽한 트롤링</title>
   <style>
     body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; touch-action: none; user-select: none; }
     
     /* 상단 UI */
-    #ui { padding: 12px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 10; height: 45px; }
-    button { padding: 8px 16px; font-weight: bold; cursor: pointer; border-radius: 6px; border: none; font-size: 15px; transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
-    button:active { transform: translateY(4px); box-shadow: 0 0px 0 rgba(0,0,0,0.3); }
+    #ui { padding: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 10; min-height: 45px; }
+    button, input[type="color"] { padding: 6px 12px; font-weight: bold; cursor: pointer; border-radius: 6px; border: none; font-size: 14px; transition: 0.1s; }
+    button:active { transform: translateY(2px); }
     
-    #ui-hider, #ui-seeker, #ui-gameover { display: flex; gap: 10px; align-items: center; }
-    #ui-seeker, #ui-gameover { display: none; }
+    #ui-move, #ui-edit, #ui-seek, #ui-gameover { display: flex; gap: 10px; align-items: center; }
+    #ui-edit, #ui-seek, #ui-gameover { display: none; }
 
     #btn-copy { background: #3498db; color: white; }
-    #btn-eye { background: #f1c40f; color: black; }
+    #btn-rotate { background: #9b59b6; color: white; }
     #btn-hide { background: #e74c3c; color: white; }
     #btn-restart { background: #2ecc71; color: white; }
-    
-    .status-text { font-size: 18px; font-weight: bold; padding: 0 10px; }
+    .active-tool { border: 2px solid #ffd32a !important; background: #555; color: #ffd32a; }
 
     /* 맵 컨테이너 */
-    #map-container { position: relative; width: 100vw; height: calc(100vh - 69px); overflow: hidden; cursor: crosshair; background: #fff; }
+    #map-container { position: relative; width: 100vw; height: calc(100vh - 65px); overflow: hidden; background: #fff; }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-    /* 플레이어 (스캔 뷰파인더) */
+    /* 플레이어 & 뷰파인더 */
     #player {
-      position: absolute; width: 60px; height: 60px;
+      position: absolute; width: 80px; height: 80px;
       transform: translate(-50%, -50%); z-index: 5;
-      display: flex; justify-content: center; align-items: center; font-size: 24px;
       border: 2px dashed #e74c3c; background: rgba(231, 76, 60, 0.1);
-      border-radius: 8px; box-sizing: border-box;
-      pointer-events: none; /* 클릭 방해 금지 */
+      box-sizing: border-box; touch-action: none;
     }
     
-    /* 십자선 (조준점) */
-    #crosshair { position: absolute; font-size: 14px; color: #e74c3c; font-weight: bold; }
-    .copied #crosshair { display: none; } /* 복사 후엔 숨김 */
+    /* 크기 조절 핸들 (우측 하단) */
+    #resize-handle {
+      position: absolute; right: -5px; bottom: -5px; width: 20px; height: 20px;
+      background: #f1c40f; border: 2px solid #333; border-radius: 50%;
+      cursor: se-resize; z-index: 10;
+    }
+
+    /* 편집 시 낙서용 캔버스 */
+    #doodle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; cursor: crosshair; }
 
     /* 복사 완료 상태 */
-    .copied { border: none !important; background-color: transparent !important; background-size: cover; background-position: center; border-radius: 0 !important; }
+    .copied { border: none !important; background-color: transparent !important; background-size: 100% 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .copied #resize-handle { display: none; }
+    
     .walking { animation: waddle 0.25s infinite alternate; }
-    @keyframes waddle { 0% { transform: translate(-50%, -50%) rotate(-5deg); } 100% { transform: translate(-50%, -50%) rotate(5deg); } }
+    @keyframes waddle { 0% { margin-left: -2px; } 100% { margin-left: 2px; } }
 
-    /* 숨기 모드 (숨쉬기 - 대폭 너프) */
-    .breathing { border: none !important; animation: breath 4s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair; }
-    @keyframes breath { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.02); } }
+    /* 숨기 모드 (숨쉬기) */
+    .breathing { box-shadow: none !important; animation: breath 4s infinite ease-in-out; pointer-events: auto !important; cursor: pointer; }
+    @keyframes breath { 0%, 100% { filter: brightness(1); transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); } 50% { filter: brightness(1.02); transform: translate(-50%, -50%) rotate(var(--rot)) scale(1.02); } }
 
-    /* 검거 시 본체 등장 */
+    /* 검거 시 본체 */
     #jelly-busted { position: absolute; display: none; font-size: 50px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; }
     @keyframes popOut { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
     @keyframes tremble { 0%, 100% { margin-left: -3px; } 50% { margin-left: 3px; } }
 
-    /* 화면 진동 */
+    /* 화면 진동 및 플로팅 텍스트 */
     .shake-screen { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
-    @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, -4px, 0); } 40%, 60% { transform: translate3d(8px, 4px, 0); } }
-
-    /* 플로팅 텍스트 */
+    @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, -4px, 0); } }
     .floating-text { position: absolute; font-weight: 900; font-size: 26px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; white-space: nowrap; }
     @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
 
-    /* 모바일 조이스틱 */
-    #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 100px; height: 100px; background: rgba(0,0,0,0.15); border-radius: 50%; z-index: 20; touch-action: none; display: none; border: 2px solid rgba(255,255,255,0.2); }
-    #joystick-knob { position: absolute; top: 30px; left: 30px; width: 40px; height: 40px; background: rgba(255,255,255,0.6); border-radius: 50%; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    /* 조이스틱 */
+    #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 100px; height: 100px; background: rgba(0,0,0,0.15); border-radius: 50%; z-index: 20; display: none; }
+    #joystick-knob { position: absolute; top: 30px; left: 30px; width: 40px; height: 40px; background: rgba(255,255,255,0.6); border-radius: 50%; }
   </style>
 </head>
 <body>
 
   <div id="ui">
-    <div id="ui-hider">
-      <button id="btn-copy" onclick="copyBackground()">📸 복사 (Space)</button>
-      <button id="btn-eye" onclick="toggleEye()">👀 눈알</button>
-      <button id="btn-hide" onclick="startHiding()">🤫 주차 완료!</button>
+    <!-- 이동/크기조절 모드 -->
+    <div id="ui-move">
+      <span style="font-size:13px; color:#aaa;">노란 점으로 크기 조절</span>
+      <button id="btn-copy" onclick="copyBackground()">📸 스캔 (Space)</button>
     </div>
-    <div id="ui-seeker">
-      <span class="status-text" style="color:#e74c3c;">❤️ <span id="life">3</span></span>
-      <span class="status-text" style="color:#f1c40f;">⏱️ <span id="time">0.00</span>초</span>
+    
+    <!-- 편집(낙서/회전) 모드 -->
+    <div id="ui-edit">
+      <button id="btn-rotate" onclick="rotatePlayer()">🔄 회전</button>
+      <input type="color" id="doodle-color" value="#000000">
+      <button id="btn-pen" class="active-tool" onclick="setTool('pen')">🖌️</button>
+      <button id="btn-eraser" onclick="setTool('eraser')">🧹</button>
+      <button id="btn-hide" onclick="startHiding()">🤫 완벽 주차!</button>
+    </div>
+
+    <!-- 술래 모드 -->
+    <div id="ui-seek">
+      <span style="color:#e74c3c; font-size:18px; font-weight:bold;">❤️ <span id="life">3</span></span> | 
+      <span style="color:#f1c40f; font-size:18px; font-weight:bold;">⏱️ <span id="time">0.00</span>초</span>
     </div>
     <div id="ui-gameover">
-      <button id="btn-restart" onclick="initGame()">🔄 다음 맵으로 다시하기</button>
+      <button id="btn-restart" onclick="initGame()">🔄 다음 맵으로!</button>
     </div>
   </div>
 
@@ -88,8 +102,8 @@
     <canvas id="bg-canvas"></canvas>
     
     <div id="player">
-      <div id="crosshair">+</div>
-      <span id="face"></span>
+      <canvas id="doodle-canvas"></canvas>
+      <div id="resize-handle"></div>
     </div>
     
     <div id="jelly-busted">😳💦</div>
@@ -101,97 +115,127 @@
     const bgCanvas = document.getElementById('bg-canvas');
     const bgCtx = bgCanvas.getContext('2d');
     const player = document.getElementById('player');
-    const face = document.getElementById('face');
+    const resizeHandle = document.getElementById('resize-handle');
+    const doodleCanvas = document.getElementById('doodle-canvas');
+    const doodleCtx = doodleCanvas.getContext('2d');
     
-    let mode = 'hide'; 
-    let pX, pY, vX = 0, vY = 0;
-    const speed = 4, pSize = 60;
+    let mode = 'move'; // move -> edit -> seek -> gameover
+    let pX, pY, pWidth = 80, pHeight = 80;
+    let vX = 0, vY = 0;
+    let rotation = 0;
+    const speed = 4;
     let keys = {};
     let life = 3, startTime, timerInterval;
     let currentMapIndex = 0;
 
-    // --- 기기 환경 체크 및 UI 조정 ---
     const isMobile = 'ontouchstart' in window;
     if (isMobile) {
       document.getElementById('joystick-zone').style.display = 'block';
-      document.getElementById('btn-copy').innerText = '📸 복사 (터치)';
+      document.getElementById('btn-copy').innerText = '📸 캡처';
     }
 
-    // --- 1. 다양한 맵 생성 시스템 ---
+    // --- 1. 맵 4종 생성 ---
     const mapGenerators = [
-      function drawNews() { // 맵 1: 뉴스
+      function drawChat() { // 신규 맵: 메신저 단톡방
+        bgCtx.fillStyle = '#b2c7d9'; bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, bgCanvas.width, 50); // 헤더
+        bgCtx.fillStyle = '#333'; bgCtx.font = 'bold 18px sans-serif'; bgCtx.fillText('웹챠 기획팀 (4)', 50, 32);
+        
+        for(let i=0; i<6; i++) { // 말풍선들
+          let y = 80 + i*70;
+          if (i%2===0) {
+            bgCtx.fillStyle = '#fff'; bgCtx.fillRect(20, y, 200, 40); // 상대방
+            bgCtx.fillStyle = '#333'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('기획안 수정 언제 되나요?', 30, y+25);
+          } else {
+            bgCtx.fillStyle = '#ffeb33'; bgCtx.fillRect(bgCanvas.width - 220, y, 200, 40); // 내 톡
+            bgCtx.fillStyle = '#333'; bgCtx.fillText('지금 V7.1 깎고 있습니다 ㅋㅋ', bgCanvas.width - 210, y+25);
+          }
+        }
+      },
+      function drawNews() { // 뉴스
         bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-        bgCtx.fillStyle = '#333'; bgCtx.font = 'bold 28px sans-serif'; bgCtx.fillText('오늘의 핫이슈 뉴스', 20, 40);
+        bgCtx.fillStyle = '#333'; bgCtx.font = 'bold 28px sans-serif'; bgCtx.fillText('IT 속보: 젤리 탈출 사건', 20, 50);
         bgCtx.fillStyle = '#666'; bgCtx.font = '16px sans-serif';
-        for(let i=0; i<15; i++) {
-          let y = 100 + i*30;
-          bgCtx.fillText('웹챠 카멜레온이 글로벌 대흥행을 기록하며 서버가 마비되었습니다. 유저들은 환호...', 20, y);
-          bgCtx.fillText('관련 기사 더보기 ▶', 20 + Math.random()*200, y + 15);
-        }
+        for(let i=0; i<10; i++) bgCtx.fillText('엄청난 퀄리티의 위장술로 모두를 속인 젤리가 화제입니다...', 20, 100 + i*30);
       },
-      function drawShop() { // 맵 2: 쇼핑몰 (버튼 많음)
+      function drawShop() { // 쇼핑몰
         bgCtx.fillStyle = '#f8f9fa'; bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-        bgCtx.fillStyle = '#ff4757'; bgCtx.fillRect(0, 0, bgCanvas.width, 50);
         for(let i=0; i<6; i++) {
-          let x = (i%3)*160 + 30, y = Math.floor(i/3)*220 + 80;
-          bgCtx.fillStyle = '#dfe4ea'; bgCtx.fillRect(x, y, 140, 140); // 상품 이미지
-          bgCtx.fillStyle = '#2ed573'; bgCtx.fillRect(x, y+150, 140, 35); // 구매 버튼
-          bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('장바구니 담기', x+25, y+172);
+          let x = (i%3)*150 + 20, y = Math.floor(i/3)*200 + 50;
+          bgCtx.fillStyle = '#dfe4ea'; bgCtx.fillRect(x, y, 130, 130);
+          bgCtx.fillStyle = '#ff4757'; bgCtx.fillRect(x, y+140, 130, 35);
+          bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('구매하기', x+35, y+162);
         }
       },
-      function drawCode() { // 맵 3: 코드 에디터
+      function drawCode() { // 코드
         bgCtx.fillStyle = '#282c34'; bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
         bgCtx.font = '16px monospace';
-        const codeLines = ['function hide() {', '  player.stealth = true;', '  return "You cant see me";', '}', 'if(busted) { alert("Oh no!"); }'];
-        for(let i=0; i<20; i++) {
-          bgCtx.fillStyle = ['#e06c75', '#98c379', '#e5c07b', '#61afef'][i%4];
-          bgCtx.fillText(codeLines[i%5], 40, 40 + i*25);
-          bgCtx.fillStyle = '#4b5263'; bgCtx.fillText((i+1), 10, 40 + i*25); // 줄번호
+        const codeLines = ['function hack() {', '  return "You cant find me";', '}', 'console.log(hack());'];
+        for(let i=0; i<15; i++) {
+          bgCtx.fillStyle = ['#e06c75', '#98c379', '#e5c07b', '#56b6c2'][i%4];
+          bgCtx.fillText(codeLines[i%4], 40, 50 + i*25);
         }
       }
     ];
 
     function renderMap() {
-      bgCanvas.width = mapContainer.clientWidth; 
-      bgCanvas.height = mapContainer.clientHeight;
+      bgCanvas.width = mapContainer.clientWidth; bgCanvas.height = mapContainer.clientHeight;
       mapGenerators[currentMapIndex % mapGenerators.length]();
     }
     window.addEventListener('resize', renderMap);
 
-    // --- 2. 초기화 (다시하기) ---
+    // --- 2. 초기화 ---
     window.initGame = () => {
-      mode = 'hide';
-      life = 3;
-      pX = mapContainer.clientWidth / 2;
-      pY = mapContainer.clientHeight / 2;
+      mode = 'move'; life = 3; rotation = 0;
+      pWidth = 80; pHeight = 80;
+      pX = mapContainer.clientWidth / 2; pY = mapContainer.clientHeight / 2;
       
-      document.getElementById('ui-hider').style.display = 'flex';
-      document.getElementById('ui-seeker').style.display = 'none';
+      document.getElementById('ui-move').style.display = 'flex';
+      document.getElementById('ui-edit').style.display = 'none';
+      document.getElementById('ui-seek').style.display = 'none';
       document.getElementById('ui-gameover').style.display = 'none';
-      if(isMobile) document.getElementById('joystick-zone').style.display = 'block';
       
-      player.style.display = 'flex';
-      player.className = '';
-      player.style.backgroundImage = 'none';
-      face.innerText = '';
+      player.style.display = 'flex'; player.className = '';
+      player.style.backgroundImage = 'none'; player.style.width = `${pWidth}px`; player.style.height = `${pHeight}px`;
+      player.style.transform = `translate(-50%, -50%) rotate(0deg)`;
+      player.style.setProperty('--rot', '0deg');
+      
+      doodleCanvas.style.display = 'none'; doodleCtx.clearRect(0,0,doodleCanvas.width, doodleCanvas.height);
       document.getElementById('jelly-busted').style.display = 'none';
       
-      currentMapIndex++;
-      renderMap();
+      currentMapIndex++; renderMap();
     };
 
-    // --- 3. 이동 및 조이스틱 ---
-    window.addEventListener('keydown', e => { 
-      keys[e.key.toLowerCase()] = true; 
-      if(e.code === 'Space' && mode === 'hide') copyBackground(); 
+    // --- 3. 이동 및 뷰파인더 크기 조절 ---
+    let isResizing = false;
+    resizeHandle.addEventListener('mousedown', (e) => { isResizing = true; e.stopPropagation(); });
+    resizeHandle.addEventListener('touchstart', (e) => { isResizing = true; e.stopPropagation(); });
+    window.addEventListener('mouseup', () => isResizing = false);
+    window.addEventListener('touchend', () => isResizing = false);
+
+    window.addEventListener('mousemove', (e) => {
+      if(!isResizing || mode !== 'move') return;
+      const rect = player.getBoundingClientRect();
+      pWidth = Math.max(30, Math.min(300, e.clientX - rect.left));
+      pHeight = Math.max(30, Math.min(300, e.clientY - rect.top));
+      player.style.width = `${pWidth}px`; player.style.height = `${pHeight}px`;
     });
+    window.addEventListener('touchmove', (e) => {
+      if(!isResizing || mode !== 'move') return;
+      const rect = player.getBoundingClientRect();
+      pWidth = Math.max(30, Math.min(300, e.touches[0].clientX - rect.left));
+      pHeight = Math.max(30, Math.min(300, e.touches[0].clientY - rect.top));
+      player.style.width = `${pWidth}px`; player.style.height = `${pHeight}px`;
+    }, {passive: false});
+
+    window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if(e.code === 'Space' && mode === 'move') copyBackground(); });
     window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
     const joyZone = document.getElementById('joystick-zone');
     const joyKnob = document.getElementById('joystick-knob');
-    let joyCenter = {x: 50, y: 50}; // zone size 100
+    let joyCenter = {x: 50, y: 50};
     joyZone.addEventListener('touchmove', (e) => {
-      if(mode !== 'hide') return;
+      if(mode !== 'move' && mode !== 'edit') return;
       e.preventDefault();
       let touchX = e.touches[0].clientX - joyZone.getBoundingClientRect().left;
       let touchY = e.touches[0].clientY - joyZone.getBoundingClientRect().top;
@@ -204,44 +248,74 @@
     joyZone.addEventListener('touchend', () => { vX=0; vY=0; joyKnob.style.transform = `translate(0,0)`; });
 
     function gameLoop() {
-      if (mode === 'hide') {
+      if (mode === 'move' || mode === 'edit') {
         if (keys['w'] || keys['arrowup']) vY = -speed; else if (keys['s'] || keys['arrowdown']) vY = speed; else if (!isMobile) vY = 0;
         if (keys['a'] || keys['arrowleft']) vX = -speed; else if (keys['d'] || keys['arrowright']) vX = speed; else if (!isMobile) vX = 0;
 
-        pX = Math.max(pSize/2, Math.min(mapContainer.clientWidth - pSize/2, pX + vX));
-        pY = Math.max(pSize/2, Math.min(mapContainer.clientHeight - pSize/2, pY + vY));
+        pX = Math.max(pWidth/2, Math.min(mapContainer.clientWidth - pWidth/2, pX + vX));
+        pY = Math.max(pHeight/2, Math.min(mapContainer.clientHeight - pHeight/2, pY + vY));
         player.style.left = `${pX}px`; player.style.top = `${pY}px`;
         
         if(vX !== 0 || vY !== 0) player.classList.add('walking'); else player.classList.remove('walking');
       }
       requestAnimationFrame(gameLoop);
     }
-    initGame(); // 최초 실행
-    gameLoop();
+    initGame(); gameLoop();
 
-    // --- 4. 복사 및 위장 완료 ---
+    // --- 4. 복사 (스캔) 및 편집(낙서, 회전) ---
     window.copyBackground = () => {
-      if(mode !== 'hide') return;
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = pSize; tempCanvas.height = pSize;
-      const tCtx = tempCanvas.getContext('2d');
-      // 현재 뷰파인더 영역 캡처
-      tCtx.drawImage(bgCanvas, pX - pSize/2, pY - pSize/2, pSize, pSize, 0, 0, pSize, pSize);
+      if(mode !== 'move') return;
+      const tCanvas = document.createElement('canvas');
+      tCanvas.width = pWidth; tCanvas.height = pHeight;
+      const tCtx = tCanvas.getContext('2d');
+      tCtx.drawImage(bgCanvas, pX - pWidth/2, pY - pHeight/2, pWidth, pHeight, 0, 0, pWidth, pHeight);
       
-      player.style.backgroundImage = `url(${tempCanvas.toDataURL()})`;
+      player.style.backgroundImage = `url(${tCanvas.toDataURL()})`;
       player.classList.add('copied');
       
-      player.style.transform = 'translate(-50%, -50%) scale(1.1)';
-      setTimeout(() => player.style.transform = 'translate(-50%, -50%) scale(1)', 150);
+      mode = 'edit';
+      document.getElementById('ui-move').style.display = 'none';
+      document.getElementById('ui-edit').style.display = 'flex';
+      
+      // 낙서 캔버스 초기화
+      doodleCanvas.style.display = 'block';
+      doodleCanvas.width = pWidth; doodleCanvas.height = pHeight;
     };
 
-    window.toggleEye = () => { face.innerText = face.innerText === '👀' ? '' : '👀'; };
+    window.rotatePlayer = () => {
+      rotation = (rotation + 90) % 360;
+      player.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+      player.style.setProperty('--rot', `${rotation}deg`); // 숨쉬기용
+    };
 
+    // 낙서(드로잉) 로직
+    let isDrawing = false, tool = 'pen';
+    window.setTool = (t) => {
+      tool = t;
+      document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen');
+      document.getElementById('btn-eraser').classList.toggle('active-tool', t === 'eraser');
+      doodleCtx.globalCompositeOperation = t === 'eraser' ? 'destination-out' : 'source-over';
+    };
+    function getMousePos(e) {
+      const rect = doodleCanvas.getBoundingClientRect();
+      const cX = e.touches ? e.touches[0].clientX : e.clientX;
+      const cY = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: cX - rect.left, y: cY - rect.top };
+    }
+    doodleCanvas.addEventListener('mousedown', (e) => { if(mode==='edit'){ isDrawing = true; doodleCtx.beginPath(); doodleCtx.moveTo(getMousePos(e).x, getMousePos(e).y); doodleCtx.lineWidth=3; doodleCtx.strokeStyle=document.getElementById('doodle-color').value; } });
+    doodleCanvas.addEventListener('mousemove', (e) => { if(isDrawing && mode==='edit'){ doodleCtx.lineTo(getMousePos(e).x, getMousePos(e).y); doodleCtx.stroke(); } });
+    window.addEventListener('mouseup', () => isDrawing = false);
+    
+    doodleCanvas.addEventListener('touchstart', (e) => { if(mode==='edit'){ isDrawing = true; doodleCtx.beginPath(); doodleCtx.moveTo(getMousePos(e).x, getMousePos(e).y); doodleCtx.lineWidth=3; doodleCtx.strokeStyle=document.getElementById('doodle-color').value; } }, {passive:false});
+    doodleCanvas.addEventListener('touchmove', (e) => { if(isDrawing && mode==='edit'){ e.preventDefault(); doodleCtx.lineTo(getMousePos(e).x, getMousePos(e).y); doodleCtx.stroke(); } }, {passive:false});
+    window.addEventListener('touchend', () => isDrawing = false);
+
+    // --- 5. 술래 모드 및 정확한 Hit 판정 ---
     window.startHiding = () => {
       mode = 'seek';
-      document.getElementById('ui-hider').style.display = 'none';
-      document.getElementById('ui-seeker').style.display = 'flex';
-      joyZone.style.display = 'none';
+      document.getElementById('ui-edit').style.display = 'none';
+      document.getElementById('ui-seek').style.display = 'flex';
+      if(isMobile) document.getElementById('joystick-zone').style.display = 'none';
       
       player.classList.remove('walking');
       player.classList.add('breathing');
@@ -250,21 +324,13 @@
       timerInterval = setInterval(() => { document.getElementById('time').innerText = ((Date.now() - startTime)/1000).toFixed(2); }, 50);
     };
 
-    // --- 5. 정확한 타격 판정 ---
     mapContainer.addEventListener('click', (e) => {
       if(mode !== 'seek') return;
       
-      // 클릭한 위치의 맵 컨테이너 기준 상대 좌표
-      const rect = mapContainer.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+      // 회전이 적용되어 있어도 이벤트 타겟(e.target)을 통해 플레이어를 클릭했는지 확인 가능!
+      const hitPlayer = e.target.closest('#player');
 
-      // 플레이어 중앙 좌표와의 거리 계산 (정확도 100%)
-      const dx = clickX - pX;
-      const dy = clickY - pY;
-      const distance = Math.sqrt(dx*dx + dy*dy);
-
-      if (distance <= pSize/2) { // 30px 이내 클릭 시 명중
+      if (hitPlayer) {
         clearInterval(timerInterval);
         player.style.display = 'none';
         
@@ -286,7 +352,7 @@
 
         if(life <= 0) {
           clearInterval(timerInterval);
-          showFloatingText(pX, pY, `젤리 승리! ㅋㅋ`, '#3498db');
+          showFloatingText(pX, pY, `젤리의 승리! ㅋㅋ`, '#3498db');
           mode = 'gameover';
           document.getElementById('ui-gameover').style.display = 'flex';
         }
@@ -296,7 +362,7 @@
     function showFloatingText(x, y, text, color) {
       const ft = document.createElement('div');
       ft.className = 'floating-text'; ft.style.color = color; ft.innerText = text;
-      ft.style.left = `${x-30}px`; ft.style.top = `${y-20}px`;
+      ft.style.left = `${x-40}px`; ft.style.top = `${y-20}px`;
       document.body.appendChild(ft);
     }
   </script>
