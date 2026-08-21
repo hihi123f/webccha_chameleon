@@ -5,51 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>웹챠 카멜레온 (Webcha Chameleon)</title>
 
+  <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <style>
-    body { 
-      margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      background: #0a0a0a; color: white; overflow: hidden; 
-      display: flex; justify-content: center; align-items: center; 
-      height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; 
-    }
+    body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; }
     
-    /* 📱 스마트폰/웹 공용 규격 래퍼 (최대 480px 고정으로 PC/모바일 싱크 100% 일치) */
-    #app-wrapper {
-      width: 100%; max-width: 480px; height: 100dvh; 
-      display: flex; flex-direction: column; background: #111; 
-      position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.8);
-    }
-
-    #ui { flex-shrink: 0; padding: 8px 12px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: space-between; align-items: center; background: #222; border-bottom: 2px solid #444; z-index: 10; box-sizing: border-box; }
-    .ui-group { display: flex; gap: 6px; align-items: center; }
-    button, input { padding: 6px 10px; font-weight: bold; border-radius: 6px; border: none; font-size: 13px; transition: 0.1s; box-sizing: border-box; }
+    #ui { flex-shrink: 0; padding: 8px 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 50; box-sizing: border-box; }
+    .ui-group { display: flex; gap: 8px; align-items: center; }
+    button, input { padding: 6px 12px; font-weight: bold; border-radius: 6px; border: none; font-size: 14px; transition: 0.1s; box-sizing: border-box; }
     button { cursor: pointer; }
-    button:active { transform: translateY(1px); }
+    button:active { transform: translateY(2px); }
     
     .btn-main { background: #3498db; color: white; }
     .btn-action { background: #e74c3c; color: white; }
     .btn-sub { background: #555; color: white; }
     .active-tool { border: 2px solid #ffd32a !important; background: #666; color: #ffd32a; }
 
-    .control-box { display: flex; align-items: center; gap: 3px; background: #333; padding: 3px 6px; border-radius: 6px; font-size: 12px; font-weight: bold; }
-    .rot-btn { background: #555; color: white; padding: 2px 6px; border-radius: 4px; font-size: 14px; border: none; }
-    #taunt-input { width: 110px; padding: 5px; background: #fff; color: #111; border: 2px solid #e74c3c; }
+    .control-box { display: flex; align-items: center; gap: 4px; background: #333; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; }
+    .rot-btn { background: #555; color: white; padding: 2px 8px; border-radius: 4px; font-size: 16px; border: none; }
+    
+    #taunt-input { width: 130px; padding: 5px; background: #fff; color: #111; border: 2px solid #e74c3c; }
 
-    #map-container { flex-grow: 1; position: relative; width: 100%; overflow: hidden; background: #fff; cursor: crosshair; }
+    /* 💡 대형 스크롤 맵 구조 */
+    #scroll-wrapper { flex-grow: 1; position: relative; overflow-y: auto; overflow-x: hidden; width: 100vw; background: #fff; }
+    #map-container { position: relative; width: 100%; height: 2500px; /* 맵 전체 높이 2500px */ cursor: crosshair; }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-    /* 1:1 완벽 픽셀 매칭 */
     .player-obj { position: absolute; transform: translate(-50%, -50%); z-index: 5; box-sizing: border-box; display: flex; justify-content: center; align-items: center; background-size: 100% 100%; background-repeat: no-repeat; pointer-events: none; }
     #local-player { outline: 2px dashed #e74c3c; outline-offset: -2px; background-color: rgba(231, 76, 60, 0.1); }
     
-    #resize-handle { position: absolute; right: -12px; bottom: -12px; width: 26px; height: 26px; background: #f1c40f; border: 2px solid #222; border-radius: 50%; cursor: se-resize; z-index: 25; pointer-events: auto; }
+    #resize-handle { position: absolute; right: -15px; bottom: -15px; width: 30px; height: 30px; background: #f1c40f; border: 2px solid #222; border-radius: 50%; cursor: se-resize; z-index: 25; pointer-events: auto; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
 
     #doodle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; cursor: crosshair; z-index: 10; pointer-events: auto; }
-    #crosshair { position: absolute; color: #e74c3c; font-weight: bold; font-size: 16px; pointer-events: none; }
-    .obj-face { position: absolute; z-index: 20; font-size: 20px; pointer-events: none; }
+    #crosshair { position: absolute; color: #e74c3c; font-weight: bold; font-size: 18px; pointer-events: none; }
+    .obj-face { position: absolute; z-index: 20; font-size: 22px; pointer-events: none; }
 
     .copied { outline: none !important; background-color: transparent !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
     .copied #resize-handle, .copied #crosshair { display: none; }
@@ -59,73 +50,73 @@
     .breathing { box-shadow: none !important; animation: breath 5s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
     @keyframes breath { 0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)); } 50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)); } }
 
-    .jelly-busted { position: absolute; font-size: 40px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
+    .jelly-busted { position: absolute; font-size: 45px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
     @keyframes popOut { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
     @keyframes tremble { 0%, 100% { margin-left: -3px; } 50% { margin-left: 3px; } }
 
     .shake-screen { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
-    @keyframes shake { 10%, 90% { transform: translate3d(-3px, 0, 0); } 20%, 80% { transform: translate3d(3px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-6px, -3px, 0); } }
+    @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, -4px, 0); } }
     
-    .floating-text { position: absolute; font-weight: 900; font-size: 22px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; white-space: nowrap; }
-    @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
+    .floating-text { position: absolute; font-weight: 900; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; white-space: nowrap; }
+    @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
 
-    .taunt-floating-banner { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); background: #ff4757; color: white; padding: 14px 24px; border-radius: 40px; font-size: 20px; font-weight: 900; box-shadow: 0 10px 25px rgba(0,0,0,0.4); z-index: 150; pointer-events: none; border: 3px solid #fff; animation: popTaunt 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; white-space: nowrap; }
+    .taunt-floating-banner { position: fixed; top: 35%; left: 50%; transform: translate(-50%, -50%); background: #ff4757; color: white; padding: 16px 28px; border-radius: 50px; font-size: 22px; font-weight: 900; box-shadow: 0 10px 25px rgba(0,0,0,0.4); z-index: 150; pointer-events: none; border: 4px solid #fff; animation: popTaunt 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; white-space: nowrap; }
     @keyframes popTaunt { 0% { transform: translate(-50%, -50%) scale(0.4) rotate(-10deg); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1) rotate(-3deg); opacity: 1; } }
 
-    /* 자유 조이스틱 */
-    #joy-base { position: absolute; width: 90px; height: 90px; background: rgba(0,0,0,0.15); border-radius: 50%; z-index: 20; display: none; pointer-events: none; transform: translate(-50%, -50%); }
-    #joy-knob { position: absolute; top: 50%; left: 50%; width: 36px; height: 36px; background: rgba(255,255,255,0.85); border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transform: translate(-50%, -50%); }
+    /* 고정형 UI (플로팅) */
+    #joy-base { position: fixed; width: 100px; height: 100px; background: rgba(0,0,0,0.15); border-radius: 50%; z-index: 60; display: none; pointer-events: none; transform: translate(-50%, -50%); }
+    #joy-knob { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; background: rgba(255,255,255,0.8); border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transform: translate(-50%, -50%); }
     
-    #mobile-action-btn { position: absolute; bottom: 30px; right: 20px; width: 64px; height: 64px; background: #3498db; border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 30; color: white; font-size: 26px; font-weight: bold; display: none; justify-content: center; align-items: center; cursor: pointer; }
+    #mobile-action-btn { position: fixed; bottom: 40px; right: 20px; width: 70px; height: 70px; background: #3498db; border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 60; color: white; font-size: 28px; font-weight: bold; display: none; justify-content: center; align-items: center; cursor: pointer; }
     #mobile-action-btn:active { transform: scale(0.9); }
   </style>
 </head>
 <body>
 
-  <div id="app-wrapper">
-    <div id="ui">
-      <div style="font-weight:900; color:#3498db; font-size:15px;">🦎 웹챠 카멜레온</div>
+  <div id="ui">
+    <div style="font-weight:900; color:#3498db; font-size:16px;">🦎 웹챠 카멜레온</div>
 
-      <div id="ui-move" class="ui-group" style="display:none;">
-        <span style="font-size:11px; color:#aaa;" id="overlap-warning">노란점: 크기조절</span>
-        <button class="btn-main" id="btn-copy" onclick="window.copyBackground()">📸 스캔 (Space)</button>
+    <div id="ui-move" class="ui-group" style="display:none;">
+      <span style="font-size:12px; color:#aaa;" id="overlap-warning">좌측:조이스틱 | 우측:스크롤</span>
+      <button class="btn-main" id="btn-copy" onclick="window.copyBackground()">📸 스캔 (Space)</button>
+    </div>
+    
+    <div id="ui-edit" class="ui-group" style="display:none;">
+      <div class="control-box">
+        🔄 
+        <button class="rot-btn" onclick="window.adjustRot(-1)">-</button>
+        <input type="range" id="rot-slider" min="0" max="360" value="0" style="width:70px;">
+        <button class="rot-btn" onclick="window.adjustRot(1)">+</button>
       </div>
-      
-      <div id="ui-edit" class="ui-group" style="display:none;">
-        <div class="control-box">
-          🔄 
-          <button class="rot-btn" onclick="window.adjustRot(-1)">-</button>
-          <input type="range" id="rot-slider" min="0" max="360" value="0" style="width:50px;">
-          <button class="rot-btn" onclick="window.adjustRot(1)">+</button>
-        </div>
-        
-        <input type="color" id="doodle-color" value="#000000" style="padding:1px; width:24px; height:24px;">
-        <button id="btn-pen" class="btn-sub active-tool" onclick="window.setTool('pen')">🖌️</button>
-        <button id="btn-eraser" class="btn-sub" onclick="window.setTool('eraser')">🧹</button>
-        <button class="btn-sub" onclick="window.toggleEye()">👀</button>
-        <input type="text" id="taunt-input" placeholder="인성질 멘트" maxlength="15">
-        <button class="btn-action" id="btn-hide" onclick="window.finishHiding()">🤫 주차 (Space)</button>
-      </div>
-
-      <div id="ui-share" class="ui-group" style="display:none;">
-        <span id="room-status-text" style="color:#2ecc71; font-size:12px; font-weight:bold;"></span>
-        <button class="btn-main" onclick="window.copyLink()">🔗 링크 복사</button>
-        <button class="btn-action" onclick="window.startPartySeek()">🔍 술래 시작</button>
-      </div>
-
-      <div id="ui-seek" class="ui-group" style="display:none; width: 100%; justify-content: space-between; padding: 0 5px;">
-        <span style="color:#e74c3c; font-size:16px; font-weight:bold;">❤️ <span id="life">3</span></span>
-        <span style="color:#2ecc71; font-size:14px; font-weight:bold;">남은 타겟: <span id="target-count">1</span></span>
-        <span style="background:#ff4757; color:white; padding:3px 10px; border-radius:15px; font-size:15px; font-weight:900;">
-          ⏱️ <span id="time">180</span>초
-        </span>
-      </div>
-
-      <div id="ui-gameover" class="ui-group" style="display:none;">
-        <button class="btn-main" onclick="location.href=location.pathname">🔄 새 게임 만들기</button>
-      </div>
+      <input type="color" id="doodle-color" value="#000000" style="padding:1px; width:28px; height:28px;">
+      <button id="btn-pen" class="btn-sub active-tool" onclick="window.setTool('pen')">🖌️</button>
+      <button id="btn-eraser" class="btn-sub" onclick="window.setTool('eraser')">🧹</button>
+      <button class="btn-sub" onclick="window.toggleEye()">👀</button>
+      <input type="text" id="taunt-input" placeholder="인성질 멘트" maxlength="20">
+      <button class="btn-action" id="btn-hide" onclick="window.finishHiding()">🤫 주차 (Space)</button>
     </div>
 
+    <div id="ui-share" class="ui-group" style="display:none;">
+      <span id="room-status-text" style="color:#2ecc71; font-size:13px; font-weight:bold;"></span>
+      <button class="btn-main" onclick="window.copyLink()">🔗 방 링크 복사</button>
+      <button class="btn-action" onclick="window.startPartySeek()">🔍 술래 시작</button>
+    </div>
+
+    <div id="ui-seek" class="ui-group" style="display:none; width: 100%; justify-content: space-between; padding: 0 10px;">
+      <span style="color:#e74c3c; font-size:18px; font-weight:bold;">❤️ <span id="life">3</span></span>
+      <span style="color:#2ecc71; font-size:16px; font-weight:bold;">남은 타겟: <span id="target-count">1</span>명</span>
+      <span style="background:#ff4757; color:white; padding:4px 14px; border-radius:20px; font-size:18px; font-weight:900; box-shadow:0 3px 6px rgba(0,0,0,0.4); letter-spacing: 1px;">
+        ⏱️ <span id="time">180</span>초
+      </span>
+    </div>
+
+    <div id="ui-gameover" class="ui-group" style="display:none;">
+      <button class="btn-main" onclick="location.href=location.pathname">🔄 새 게임 만들기</button>
+    </div>
+  </div>
+
+  <!-- 💡 스크롤 래퍼 추가 -->
+  <div id="scroll-wrapper">
     <div id="map-container">
       <canvas id="bg-canvas"></canvas>
       
@@ -135,13 +126,17 @@
         <canvas id="doodle-canvas"></canvas>
         <div id="resize-handle"></div>
       </div>
-
-      <div id="joy-base"><div id="joy-knob"></div></div>
-      <div id="mobile-action-btn">📸</div>
     </div>
   </div>
 
-  <script>
+  <div id="joy-base"><div id="joy-knob"></div></div>
+  <div id="mobile-action-btn">📸</div>
+
+  <script type="module">
+    // Firebase 연동
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyDYmOC4OiW90_8ee0ndpO6xSRSBKJENlws",
       authDomain: "webcchachameleon.firebaseapp.com",
@@ -154,10 +149,11 @@
 
     let db = null;
     try {
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.database();
-    } catch(e) { console.warn("로컬 모드로 작동합니다.", e); }
+      const app = initializeApp(firebaseConfig);
+      db = getDatabase(app);
+    } catch(e) { console.warn("Firebase 연결 실패 -> 로컬 모드로 작동합니다.", e); }
 
+    const scrollWrapper = document.getElementById('scroll-wrapper');
     const mapContainer = document.getElementById('map-container');
     const bgCanvas = document.getElementById('bg-canvas');
     const bgCtx = bgCanvas.getContext('2d');
@@ -169,7 +165,7 @@
     const doodleCtx = doodleCanvas.getContext('2d');
     
     let mode = 'move'; 
-    let pX, pY, pWidth = 100, pHeight = 50;
+    let pX, pY, pWidth = 100, pHeight = 60;
     let vX = 0, vY = 0, rotation = 0;
     const speed = 4;
     let keys = {};
@@ -181,6 +177,7 @@
     let existingHiders = [];
     let tauntMessage = "시력 장식이냐? 젤리 승리 ㅋㅋ";
 
+    const MAP_HEIGHT = 2500; // 대형 맵 (2500px)
     const dpr = window.devicePixelRatio || 1;
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     
@@ -196,70 +193,74 @@
       return x - Math.floor(x);
     }
 
-    // 모바일 웹 뷰에 최적화된 고선명 맵 렌더러
+    // ==========================================
+    // 🎨 2500px 디테일 맵 생성기 (스크롤 콘텐츠)
+    // ==========================================
     const mapGenerators = [
       function drawYoutube() {
-        const w = mapContainer.clientWidth;
-        bgCtx.fillStyle = '#0f0f0f'; bgCtx.fillRect(0, 0, w, mapContainer.clientHeight);
-        for(let i=0; i<6; i++) {
-          let y = 15 + i*160;
-          bgCtx.fillStyle = '#222'; bgCtx.fillRect(15, y, w - 30, 95);
-          bgCtx.fillStyle = 'rgba(0,0,0,0.8)'; bgCtx.fillRect(w - 75, y+70, 45, 18);
-          bgCtx.fillStyle = '#fff'; bgCtx.font = '11px sans-serif'; bgCtx.fillText('10:24', w - 68, y+83);
-          bgCtx.beginPath(); bgCtx.arc(35, y+122, 14, 0, Math.PI*2); bgCtx.fillStyle='#ff4757'; bgCtx.fill();
-          bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 13px sans-serif'; bgCtx.fillText('웹챠 카멜레온 레전드 플레이', 60, y+118);
-          bgCtx.fillStyle = '#888'; bgCtx.font = '11px sans-serif'; bgCtx.fillText('조회수 120만회 • 3시간 전', 60, y+134);
+        bgCtx.fillStyle = '#0f0f0f'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, MAP_HEIGHT);
+        let w = bgCanvas.width/dpr;
+        // 상단 영상
+        bgCtx.fillStyle = '#000'; bgCtx.fillRect(0, 0, w, 220);
+        bgCtx.fillStyle = '#ff0000'; bgCtx.fillRect(0, 215, w*0.4, 5); // 진행바
+        // 제목 및 정보
+        bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 18px sans-serif'; bgCtx.fillText('웹챠 9인 합방 레전드 하이라이트 (스압주의)', 15, 250);
+        bgCtx.fillStyle = '#aaa'; bgCtx.font = '13px sans-serif'; bgCtx.fillText('조회수 1,424,301회 • 3일 전', 15, 275);
+        // 채널
+        bgCtx.beginPath(); bgCtx.arc(30, 320, 18, 0, Math.PI*2); bgCtx.fillStyle='#ff4757'; bgCtx.fill();
+        bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('웹챠 오피셜', 60, 315);
+        bgCtx.fillStyle = '#aaa'; bgCtx.font = '12px sans-serif'; bgCtx.fillText('구독자 99.9만명', 60, 335);
+        // 댓글 20개 (스크롤 유도)
+        bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('댓글 9,999개', 15, 390);
+        for(let i=0; i<20; i++) {
+          let y = 430 + (i * 80);
+          bgCtx.beginPath(); bgCtx.arc(30, y+10, 15, 0, Math.PI*2); 
+          bgCtx.fillStyle = `hsl(${seededRandom()*360}, 70%, 60%)`; bgCtx.fill();
+          bgCtx.fillStyle = '#ddd'; bgCtx.font = 'bold 13px sans-serif'; bgCtx.fillText(`유저_${Math.floor(seededRandom()*9999)}`, 55, y+5);
+          bgCtx.fillStyle = '#fff'; bgCtx.font = '14px sans-serif'; 
+          let msg = ["진짜 저기 숨은거 레전드다 ㅋㅋ", "술래 눈 삐었음?", "와 이걸 어떻게 찾냐", "나도 저렇게 숨고싶다", "방송 개꿀잼이네 ㅋㅋㅋ"][i%5];
+          bgCtx.fillText(msg, 55, y+25);
+        }
+        // 다음 동영상 리스트
+        bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('다음 동영상', 15, 2080);
+        for(let i=0; i<4; i++) {
+          let y = 2100 + (i * 90);
+          bgCtx.fillStyle = '#222'; bgCtx.fillRect(15, y, 120, 70);
+          bgCtx.fillStyle = '#fff'; bgCtx.font = '13px sans-serif'; bgCtx.fillText('웹챠 숨바꼭질 쇼츠', 145, y+20);
+          bgCtx.fillStyle = '#aaa'; bgCtx.font = '11px sans-serif'; bgCtx.fillText('조회수 50만회', 145, y+40);
         }
       },
-      function drawInsta() {
-        const w = mapContainer.clientWidth;
-        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, mapContainer.clientHeight);
-        for (let i=0; i<2; i++) {
-          let y = 10 + i * 360;
-          bgCtx.beginPath(); bgCtx.arc(35, y+25, 15, 0, Math.PI*2); bgCtx.fillStyle='#ff7675'; bgCtx.fill();
-          bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 13px sans-serif'; bgCtx.fillText('chameleon_official', 60, y+29);
-          bgCtx.fillStyle = '#f1f2f6'; bgCtx.fillRect(15, y+50, w-30, 220);
-          bgCtx.fillStyle = '#ff4757'; bgCtx.font = '18px sans-serif'; bgCtx.fillText('❤️ 💬 ↗️', 20, y+290);
-          bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 12px sans-serif'; bgCtx.fillText('좋아요 99,999개', 20, y+310);
+      function drawShop() {
+        bgCtx.fillStyle = '#f8f9fa'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, MAP_HEIGHT);
+        let w = bgCanvas.width/dpr;
+        // 상단 배너
+        bgCtx.fillStyle = '#ff4757'; bgCtx.fillRect(0, 0, w, 150);
+        bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 24px sans-serif'; bgCtx.textAlign="center"; bgCtx.fillText('웹챠 블랙프라이데이 99% 할인!', w/2, 80); bgCtx.textAlign="left";
+        // 상품 16개 (그리드)
+        for(let i=0; i<16; i++) {
+          let x = (i%2) * (w/2) + 15;
+          let y = 180 + Math.floor(i/2) * 220;
+          bgCtx.fillStyle = '#dfe4ea'; bgCtx.fillRect(x, y, (w/2)-25, 120);
+          bgCtx.fillStyle = '#2d3436'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('최고급 투명망토', x, y+140);
+          bgCtx.fillStyle = '#ff4757'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('₩ 9,900', x, y+160);
+          bgCtx.fillStyle = '#3498db'; bgCtx.fillRect(x, y+175, (w/2)-25, 30);
+          bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 13px sans-serif'; bgCtx.fillText('장바구니', x+35, y+195);
         }
-      },
-      function drawChat() {
-        const w = mapContainer.clientWidth;
-        bgCtx.fillStyle = '#b2c7d9'; bgCtx.fillRect(0, 0, w, mapContainer.clientHeight);
-        const msgs = ["오늘 점심 뭐먹음?", "치킨 어떰 ㅋㅋ", "술래 누구냐?", "절대 못찾는 곳에 숨음", "빨리 찾아봐라 ㅋㅋ", "힌트 1도 안줌"];
-        for(let i=0; i<msgs.length; i++) {
-          let y = 30 + i*60;
-          if (i%2===0) { 
-            bgCtx.fillStyle = '#fff'; bgCtx.fillRect(15, y, 160, 36); 
-            bgCtx.fillStyle = '#111'; bgCtx.font = '13px sans-serif'; bgCtx.fillText(msgs[i], 25, y+23); 
-          } else { 
-            bgCtx.fillStyle = '#ffeb33'; bgCtx.fillRect(w - 175, y, 160, 36); 
-            bgCtx.fillStyle = '#111'; bgCtx.font = '13px sans-serif'; bgCtx.fillText(msgs[i], w - 165, y+23); 
-          }
+        // 리뷰 섹션
+        let reviewY = 1950;
+        bgCtx.fillStyle = '#222'; bgCtx.fillRect(0, reviewY, w, 550);
+        bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 18px sans-serif'; bgCtx.fillText('베스트 구매 평', 15, reviewY + 40);
+        for(let i=0; i<4; i++) {
+          let y = reviewY + 70 + (i*100);
+          bgCtx.fillStyle = '#ffd32a'; bgCtx.fillText('★★★★★', 15, y+20);
+          bgCtx.fillStyle = '#ccc'; bgCtx.font = '13px sans-serif'; bgCtx.fillText('배송이 엄청 빠르고 위장력이 지립니다. 술래가 못찾아요.', 15, y+45);
         }
-      },
-      function drawNews() {
-        const w = mapContainer.clientWidth;
-        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, mapContainer.clientHeight);
-        bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 20px sans-serif'; bgCtx.fillText('[단독] 9인의 위장 젤리, 완벽 잠입', 15, 40);
-        bgCtx.fillStyle = '#888'; bgCtx.font = '11px sans-serif'; bgCtx.fillText('입력 2026.08.22 01:40 | 수정 01:42', 15, 60);
-        bgCtx.fillStyle = '#e4e7eb'; bgCtx.fillRect(15, 75, w-30, 2);
-        bgCtx.fillStyle = '#333'; bgCtx.font = '13px sans-serif';
-        const lines = [
-          "웹챠 카멜레온의 놀라운 위장술에 전 세계",
-          "술래들이 충격과 패닉에 빠졌습니다.",
-          "화면 속에 완전히 동화되어 픽셀 단위로",
-          "숨어있는 젤리들을 찾기 위해 수많은 유저들이",
-          "밤낮으로 화면을 수색하고 있으나 검거율은",
-          "여전히 10% 미만에 머물고 있는 것으로 나타났습니다."
-        ];
-        for(let i=0; i<lines.length; i++) bgCtx.fillText(lines[i], 15, 105 + i*26);
       }
     ];
 
     function renderMap() {
-      bgCanvas.width = mapContainer.clientWidth * dpr; 
-      bgCanvas.height = mapContainer.clientHeight * dpr;
+      bgCanvas.width = scrollWrapper.clientWidth * dpr; 
+      bgCanvas.height = MAP_HEIGHT * dpr; // 고정 2500px
       bgCtx.scale(dpr, dpr); 
       roomSeed = currentMapIndex + 100;
       mapGenerators[currentMapIndex % mapGenerators.length]();
@@ -284,10 +285,10 @@
       if (!isResizing || mode !== 'move') return;
       const rect = mapContainer.getBoundingClientRect();
       const currentMouseX = clientX - rect.left;
-      const currentMouseY = clientY - rect.top;
+      const currentMouseY = clientY - rect.top; // 스크롤 보정됨
 
-      pWidth = Math.round(Math.max(40, Math.min(250, (currentMouseX - pX) * 2)));
-      pHeight = Math.round(Math.max(30, Math.min(200, (currentMouseY - pY) * 2)));
+      pWidth = Math.round(Math.max(40, Math.min(300, (currentMouseX - pX) * 2)));
+      pHeight = Math.round(Math.max(40, Math.min(300, (currentMouseY - pY) * 2)));
       localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
     }
     window.addEventListener('mousemove', (e) => handleResizeMove(e.clientX, e.clientY));
@@ -295,10 +296,12 @@
       if (isResizing) { e.preventDefault(); handleResizeMove(e.touches[0].clientX, e.touches[0].clientY); }
     }, { passive: false });
 
+
     // ==========================================
-    // 🎨 낙서 (회전 좌표 완벽 연동)
+    // 🎨 낙서 (회전 좌표 완벽 매핑)
     // ==========================================
     let isDrawing = false; let drawTool = 'pen';
+    
     window.setTool = (t) => {
       drawTool = t;
       document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen');
@@ -335,12 +338,13 @@
     doodleCanvas.addEventListener('mousedown', startDraw);
     doodleCanvas.addEventListener('mousemove', draw);
     window.addEventListener('mouseup', () => { isDrawing = false; });
+    
     doodleCanvas.addEventListener('touchstart', startDraw, { passive: false });
     doodleCanvas.addEventListener('touchmove', draw, { passive: false });
     window.addEventListener('touchend', () => { isDrawing = false; });
 
     // ==========================================
-    // 🎛️ 스캔 및 1:1 픽셀 퍼펙트 주차 로직
+    // 🎛️ 회전 및 스캔 & 주차 시스템
     // ==========================================
     window.adjustRot = (val) => {
       let current = parseInt(rotSlider.value);
@@ -376,31 +380,28 @@
       });
     }
 
-    // 💡 1:1 픽셀 오차 없는 초정밀 캡처 엔진
     window.copyBackground = () => {
       if (mode !== 'move') return;
 
       const isOverlap = existingHiders.some(h => Math.hypot(h.pX - pX, h.pY - pY) < 45);
       if (isOverlap) {
-        document.getElementById('overlap-warning').innerText = "⚠️ 선점된 자리!";
+        document.getElementById('overlap-warning').innerText = "⚠️ 이미 선점된 자리!";
         document.getElementById('overlap-warning').style.color = "#ff4757";
         setTimeout(() => {
-          document.getElementById('overlap-warning').innerText = "노란점: 크기조절";
+          document.getElementById('overlap-warning').innerText = "좌:조이스틱 | 우:스크롤";
           document.getElementById('overlap-warning').style.color = "#aaa";
         }, 1500);
         return;
       }
 
       const tCanvas = document.createElement('canvas');
-      const sw = Math.round(pWidth * dpr);
-      const sh = Math.round(pHeight * dpr);
-      const sx = Math.round((pX - pWidth/2) * dpr);
-      const sy = Math.round((pY - pHeight/2) * dpr);
-
+      const sw = Math.round(pWidth * dpr), sh = Math.round(pHeight * dpr);
+      const sx = Math.round((pX - pWidth/2) * dpr), sy = Math.round((pY - pHeight/2) * dpr);
       tCanvas.width = sw; tCanvas.height = sh;
       tCanvas.getContext('2d').drawImage(bgCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
       
       localPlayer.style.backgroundImage = `url(${tCanvas.toDataURL()})`;
+      localPlayer.style.backgroundSize = `100% 100%`;
       localPlayer.classList.add('copied');
       
       mode = 'edit';
@@ -415,7 +416,7 @@
 
     window.toggleEye = () => { localFace.innerText = localFace.innerText === '👀' ? '' : '👀'; };
     
-    window.finishHiding = () => {
+    window.finishHiding = async () => {
       if (mode !== 'edit') return;
       const userTaunt = document.getElementById('taunt-input').value.trim();
       if (userTaunt) tauntMessage = userTaunt;
@@ -427,7 +428,7 @@
 
       const bgImg = new Image();
       bgImg.src = localPlayer.style.backgroundImage.slice(5, -2);
-      bgImg.onload = () => {
+      bgImg.onload = async () => {
         mCtx.drawImage(bgImg, 0, 0, mergedCanvas.width, mergedCanvas.height);
         mCtx.drawImage(doodleCanvas, 0, 0); 
 
@@ -438,19 +439,19 @@
           taunt: tauntMessage
         };
 
-        saveData(myData);
+        await saveData(myData);
       };
     };
 
-    function saveData(myData) {
+    async function saveData(myData) {
       if (db) {
-        const roomRef = firebase.database().ref('rooms/' + currentRoomId);
-        roomRef.once('value').then(snap => {
-          let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
-          if (!roomData.list) roomData.list = [];
-          roomData.list.push(myData);
-          roomRef.set(roomData).then(() => showShareScreen(roomData.list.length));
-        });
+        const roomRef = ref(db, 'rooms/' + currentRoomId);
+        const snap = await get(roomRef);
+        let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
+        if (!roomData.list) roomData.list = [];
+        roomData.list.push(myData);
+        await set(roomRef, roomData);
+        showShareScreen(roomData.list.length);
       } else {
         let roomData = JSON.parse(localStorage.getItem('room_' + currentRoomId)) || { mapIndex: currentMapIndex, list: [] };
         roomData.list.push(myData);
@@ -463,13 +464,13 @@
       mode = 'share';
       document.getElementById('ui-edit').style.display = 'none';
       document.getElementById('ui-share').style.display = 'flex';
-      document.getElementById('room-status-text').innerText = `주차 완료! (${count}/9명)`;
+      document.getElementById('room-status-text').innerText = `주차 완료! (현재 ${count}/9명)`;
       if (isMobile) { actionBtn.style.display = 'none'; }
     }
 
     window.copyLink = () => {
       const shareUrl = `${location.origin}${location.pathname}?room=${currentRoomId}`;
-      navigator.clipboard.writeText(shareUrl).then(() => alert("방 링크 복사 완료! (친구들에게 전송)"));
+      navigator.clipboard.writeText(shareUrl).then(() => alert("방 링크 복사 완료! (친구들에게 보내세요)"));
     };
 
     window.startPartySeek = () => {
@@ -477,59 +478,61 @@
     };
 
     // ==========================================
-    // 🕵️ 술래 모드
+    // 🕵️ 술래 모드 (스크롤 맵 지원)
     // ==========================================
-    function initSeeker(id) {
+    async function initSeeker(id) {
+      let roomData = null;
       if (db) {
-        firebase.database().ref('rooms/' + id).once('value').then(snap => {
-          if (snap.exists()) startSeekerMode(snap.val());
-          else alert("데이터를 찾을 수 없습니다.");
-        });
+        const snap = await get(ref(db, 'rooms/' + id));
+        if (snap.exists()) roomData = snap.val();
       } else {
         const local = localStorage.getItem('room_' + id);
-        if (local) startSeekerMode(JSON.parse(local));
-        else alert("데이터를 찾을 수 없습니다.");
+        if (local) roomData = JSON.parse(local);
       }
-    }
 
-    function startSeekerMode(roomData) {
-      mode = 'seek';
-      currentMapIndex = roomData.mapIndex;
-      renderMap();
-      localPlayer.style.display = 'none';
+      if (roomData) {
+        mode = 'seek';
+        currentMapIndex = roomData.mapIndex;
+        renderMap();
+        localPlayer.style.display = 'none';
 
-      existingHiders = roomData.list || [];
-      document.getElementById('target-count').innerText = existingHiders.length;
-      document.getElementById('ui-move').style.display = 'none';
-      document.getElementById('ui-seek').style.display = 'flex';
-      if (isMobile) { actionBtn.style.display = 'none'; }
+        existingHiders = roomData.list || [];
+        document.getElementById('target-count').innerText = existingHiders.length;
+        document.getElementById('ui-move').style.display = 'none';
+        document.getElementById('ui-seek').style.display = 'flex';
+        if (isMobile) { actionBtn.style.display = 'none'; }
 
-      existingHiders.forEach((data, idx) => {
-        const el = document.createElement('div');
-        el.className = 'player-obj copied breathing target-obj';
-        el.id = `target-${idx}`;
-        el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
-        el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
-        el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
-        el.style.setProperty('--rot', `${data.rotation}deg`);
-        el.style.backgroundImage = `url(${data.image})`;
-        if(data.hasEye) {
-          const eye = document.createElement('span');
-          eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
-        }
-        mapContainer.appendChild(el);
-      });
+        existingHiders.forEach((data, idx) => {
+          const el = document.createElement('div');
+          el.className = 'player-obj copied breathing target-obj';
+          el.id = `target-${idx}`;
+          el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
+          el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
+          el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
+          el.style.setProperty('--rot', `${data.rotation}deg`);
+          el.style.backgroundImage = `url(${data.image})`;
+          el.style.backgroundSize = '100% 100%';
+          if(data.hasEye) {
+            const eye = document.createElement('span');
+            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
+          }
+          mapContainer.appendChild(el);
+        });
 
-      timeLeft = 180;
-      document.getElementById('time').innerText = timeLeft;
-      timerInterval = setInterval(() => {
-        timeLeft--;
+        timeLeft = 180;
         document.getElementById('time').innerText = timeLeft;
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
-          triggerGameOver("시간 초과! 젤리들의 승리 ⏱️");
-        }
-      }, 1000);
+        timerInterval = setInterval(() => {
+          timeLeft--;
+          document.getElementById('time').innerText = timeLeft;
+          if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            triggerGameOver("시간 초과! 젤리들의 승리 ⏱️");
+          }
+        }, 1000);
+      } else {
+        alert("데이터를 찾을 수 없습니다.");
+        location.href = location.pathname;
+      }
     }
 
     mapContainer.addEventListener('click', (e) => {
@@ -555,7 +558,7 @@
 
         if (remaining === 0) {
           clearInterval(timerInterval);
-          showFloatingBanner("🎉 술래 완승! 전원 검거!");
+          showFloatingBanner("🎉 술래 완승! 모든 젤리를 검거했습니다!");
           mode = 'gameover';
           document.getElementById('ui-seek').style.display = 'none';
           document.getElementById('ui-gameover').style.display = 'flex';
@@ -587,53 +590,61 @@
       const banner = document.createElement('div');
       banner.className = 'taunt-floating-banner';
       banner.innerText = text;
-      mapContainer.appendChild(banner);
+      document.body.appendChild(banner); // Fixed position so attach to body
     }
 
     function showFloatingText(x, y, text, color) {
       const ft = document.createElement('div');
       ft.className = 'floating-text'; ft.style.color = color; ft.innerText = text;
-      ft.style.left = `${x-30}px`; ft.style.top = `${y-20}px`;
-      document.body.appendChild(ft);
+      
+      // 스크롤 위치 보정
+      const rect = mapContainer.getBoundingClientRect();
+      ft.style.left = `${x - rect.left - 40}px`; 
+      ft.style.top = `${y - rect.top - 20}px`;
+      mapContainer.appendChild(ft);
     }
 
     // ==========================================
-    // 🕹️ 자유 조이스틱 (감도: 1.2)
+    // 🕹️ 💡 [핵심 패치] 반반 컨트롤 (좌: 조이스틱, 우: 스크롤)
     // ==========================================
     let isJoystickActive = false;
     let joyBase = document.getElementById('joy-base');
     let joyKnob = document.getElementById('joy-knob');
     let joyStart = { x: 0, y: 0 };
-    const MAX_JOY_RADIUS = 35;
+    const MAX_JOY_RADIUS = 40;
     const JOY_SPEED = 1.2; 
     
-    mapContainer.addEventListener('touchstart', (e) => {
+    // wrapper에 이벤트 리스너를 달아 좌우를 구분합니다.
+    scrollWrapper.addEventListener('touchstart', (e) => {
       if(mode !== 'move' && mode !== 'edit') return;
-      if(e.target.closest('#ui') || e.target.closest('#resize-handle') || e.target.closest('#mobile-action-btn') || e.target.closest('#doodle-canvas')) return;
+      if(e.target.closest('#resize-handle') || e.target.closest('#mobile-action-btn') || e.target.closest('#doodle-canvas')) return;
       
-      isJoystickActive = true;
       const touch = e.touches[0];
-      const rect = mapContainer.getBoundingClientRect();
-      joyStart.x = touch.clientX - rect.left;
-      joyStart.y = touch.clientY - rect.top;
-      
-      joyBase.style.left = `${joyStart.x}px`;
-      joyBase.style.top = `${joyStart.y}px`;
-      joyBase.style.display = 'block';
-      joyKnob.style.transform = `translate(-50%, -50%)`;
-      vX = 0; vY = 0;
+      // 💡 화면의 '왼쪽 절반'을 터치했을 때만 조이스틱 발동
+      if (touch.clientX < window.innerWidth / 2) {
+        isJoystickActive = true;
+        joyStart.x = touch.clientX;
+        joyStart.y = touch.clientY;
+        
+        joyBase.style.left = `${joyStart.x}px`;
+        joyBase.style.top = `${joyStart.y}px`;
+        joyBase.style.display = 'block';
+        joyKnob.style.transform = `translate(-50%, -50%)`;
+        vX = 0; vY = 0;
+        
+        // 조이스틱을 쓸 때는 스크롤 방지
+        e.preventDefault(); 
+      }
+      // 오른쪽 터치는 아무것도 안함 -> 기본 브라우저 스크롤 작동!
     }, {passive: false});
 
-    mapContainer.addEventListener('touchmove', (e) => {
+    window.addEventListener('touchmove', (e) => {
       if(!isJoystickActive) return;
       e.preventDefault();
       const touch = e.touches[0];
-      const rect = mapContainer.getBoundingClientRect();
-      let currentX = touch.clientX - rect.left;
-      let currentY = touch.clientY - rect.top;
       
-      let dx = currentX - joyStart.x;
-      let dy = currentY - joyStart.y;
+      let dx = touch.clientX - joyStart.x;
+      let dy = touch.clientY - joyStart.y;
       let dist = Math.hypot(dx, dy);
       
       if(dist > MAX_JOY_RADIUS) {
@@ -653,9 +664,12 @@
         vX = 0; vY = 0;
       }
     }
-    mapContainer.addEventListener('touchend', endJoy);
-    mapContainer.addEventListener('touchcancel', endJoy);
+    window.addEventListener('touchend', endJoy);
+    window.addEventListener('touchcancel', endJoy);
 
+    // ==========================================
+    // 🎥 💡 [핵심 패치] 자동 카메라 팔로우 시스템
+    // ==========================================
     function gameLoop() {
       if (mode === 'move' || mode === 'edit') {
         if (!isJoystickActive) {
@@ -664,73 +678,86 @@
           if (keys['a'] || keys['arrowleft']) vX = -speed; else if (keys['d'] || keys['arrowright']) vX = speed;
         }
 
-        pX = Math.round(Math.max(pWidth/2, Math.min(mapContainer.clientWidth - pWidth/2, pX + vX)));
-        pY = Math.round(Math.max(pHeight/2, Math.min(mapContainer.clientHeight - pHeight/2, pY + vY)));
+        // x, y 경계 처리 (높이가 MAP_HEIGHT(2500)으로 늘어남!)
+        pX = Math.round(Math.max(pWidth/2, Math.min(scrollWrapper.clientWidth - pWidth/2, pX + vX)));
+        pY = Math.round(Math.max(pHeight/2, Math.min(MAP_HEIGHT - pHeight/2, pY + vY)));
         localPlayer.style.left = `${pX}px`; localPlayer.style.top = `${pY}px`;
         
         if(vX !== 0 || vY !== 0) localPlayer.classList.add('walking'); else localPlayer.classList.remove('walking');
+
+        // 💡 화면 상/하단으로 이동 시 카메라(스크롤) 자동 따라가기
+        if (vY !== 0) {
+          const screenY = pY - scrollWrapper.scrollTop;
+          const margin = 150; // 상하단 여백
+          if (screenY < margin) scrollWrapper.scrollTop -= Math.abs(vY);
+          else if (screenY > scrollWrapper.clientHeight - margin) scrollWrapper.scrollTop += Math.abs(vY);
+        }
       }
       requestAnimationFrame(gameLoop);
     }
 
-    function initSystem() {
+    async function initSystem() {
       const urlParams = new URLSearchParams(window.location.search);
       currentRoomId = urlParams.get('room');
       const isSeekMode = urlParams.get('mode') === 'seek';
 
       if (currentRoomId) {
-        if (isSeekMode) initSeeker(currentRoomId);
-        else initJoinHider(currentRoomId);
+        if (isSeekMode) await initSeeker(currentRoomId);
+        else await initJoinHider(currentRoomId);
       } else {
         currentRoomId = Math.random().toString(36).substr(2, 6);
         currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
         existingHiders = [];
         mode = 'move'; renderMap();
-        pWidth = 100; pHeight = 50;
-        pX = Math.round(mapContainer.clientWidth / 2); pY = Math.round(mapContainer.clientHeight / 2);
+        pWidth = 120; pHeight = 60;
+        pX = Math.round(scrollWrapper.clientWidth / 2); 
+        pY = Math.round(scrollWrapper.clientHeight / 2); // 시작 시 화면 중앙
         document.getElementById('ui-move').style.display = 'flex';
         localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
         gameLoop();
       }
     }
 
-    function initJoinHider(id) {
+    async function initJoinHider(id) {
+      let roomData = null;
       if (db) {
-        firebase.database().ref('rooms/' + id).once('value').then(snap => {
-          if (snap.exists()) setupJoinHider(snap.val());
-          else { alert("방을 찾을 수 없어 새 방을 엽니다."); initSystem(); }
-        });
+        const snap = await get(ref(db, 'rooms/' + id));
+        if (snap.exists()) roomData = snap.val();
       } else {
         const local = localStorage.getItem('room_' + id);
-        if (local) setupJoinHider(JSON.parse(local));
+        if (local) roomData = JSON.parse(local);
       }
-    }
 
-    function setupJoinHider(roomData) {
-      currentMapIndex = roomData.mapIndex;
-      existingHiders = roomData.list || [];
-      mode = 'move'; renderMap();
-      pWidth = 100; pHeight = 50;
-      pX = Math.round(mapContainer.clientWidth / 2); pY = Math.round(mapContainer.clientHeight / 2);
-      document.getElementById('ui-move').style.display = 'flex';
-      localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
+      if (roomData) {
+        currentMapIndex = roomData.mapIndex;
+        existingHiders = roomData.list || [];
+        mode = 'move'; renderMap();
+        pWidth = 120; pHeight = 60;
+        pX = Math.round(scrollWrapper.clientWidth / 2); 
+        pY = Math.round(scrollWrapper.clientHeight / 2);
+        document.getElementById('ui-move').style.display = 'flex';
+        localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
 
-      existingHiders.forEach((data) => {
-        const el = document.createElement('div');
-        el.className = 'player-obj copied breathing';
-        el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
-        el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
-        el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
-        el.style.setProperty('--rot', `${data.rotation}deg`);
-        el.style.backgroundImage = `url(${data.image})`;
-        if(data.hasEye) {
-          const eye = document.createElement('span');
-          eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
-        }
-        mapContainer.appendChild(el);
-      });
+        existingHiders.forEach((data) => {
+          const el = document.createElement('div');
+          el.className = 'player-obj copied breathing';
+          el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
+          el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
+          el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
+          el.style.setProperty('--rot', `${data.rotation}deg`);
+          el.style.backgroundImage = `url(${data.image})`;
+          el.style.backgroundSize = '100% 100%';
+          if(data.hasEye) {
+            const eye = document.createElement('span');
+            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
+          }
+          mapContainer.appendChild(el);
+        });
 
-      gameLoop();
+        gameLoop();
+      } else {
+        location.href = location.pathname;
+      }
     }
 
     initSystem();
