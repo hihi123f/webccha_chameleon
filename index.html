@@ -128,10 +128,12 @@
     </div>
 
     <div id="ui-seek" class="ui-group" style="display:none; width: 100%; justify-content: space-between;">
-      <span style="color:#e74c3c; font-size:18px; font-weight:bold;">❤️ <span id="life">3</span></span>
+      <span style="color:#e74c3c; font-size:16px; font-weight:bold;">❤️ <span id="life">3</span></span>
+      <!-- 💡 내 점수판 추가 -->
+      <span style="color:#f39c12; font-size:16px; font-weight:bold;">내 점수: <span id="my-score">0</span>점</span>
       <span style="color:#2ecc71; font-size:15px; font-weight:bold;">남은 타겟: <span id="target-count">1</span>명</span>
       <span style="background:#ff4757; color:white; padding:4px 14px; border-radius:20px; font-size:16px; font-weight:900; box-shadow:0 3px 6px rgba(0,0,0,0.4);">
-        ⏱️ <span id="time">60</span>초
+        ⏱️ <span id="time">180</span>초
       </span>
     </div>
 
@@ -231,6 +233,7 @@
 
     let comboCount = 0;
     let lastCatchTime = 0;
+    let myScore = 0; // 💡 내 점수 변수 추가
 
     const scrollWrapper = document.getElementById('scroll-wrapper');
     const mapContainer = document.getElementById('map-container');
@@ -937,10 +940,44 @@
             const eye = document.createElement('span');
             eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
           }
-          mapContainer.appendChild(el);
-        });
+          // ... (젤리 렌더링 코드 끝남) ...
+        mapContainer.appendChild(el);
+      });
 
-        timeLeft = 60;
+      // 💡 [핵심] 누군가 젤리를 잡으면 내 화면에서도 실시간으로 지워버림!
+      if (db) {
+        firebase.database().ref('rooms/' + id + '/caught').on('child_added', snap => {
+          const idx = snap.key;
+          const hitTarget = document.getElementById(`target-${idx}`);
+          
+          if (hitTarget) {
+            const caughtData = existingHiders[idx];
+            hitTarget.remove(); // 남이 잡은 젤리는 내 화면에서도 삭제됨
+            
+            const jelly = document.createElement('div');
+            jelly.className = 'jelly-busted'; jelly.innerText = '😳💦';
+            jelly.style.left = `${caughtData.pX}px`; jelly.style.top = `${caughtData.pY}px`;
+            mapContainer.appendChild(jelly);
+
+            mapContainer.classList.add('shake-screen');
+            setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+
+            const remaining = document.querySelectorAll('.target-obj').length;
+            document.getElementById('target-count').innerText = remaining;
+
+            // 남은 타겟이 0이면 게임 종료
+            if (remaining === 0) {
+              clearInterval(timerInterval);
+              showFloatingBanner(`🎉 색출 종료! (내 최종 점수: ${myScore}점)`);
+              mode = 'gameover';
+              document.getElementById('ui-seek').style.display = 'none';
+              document.getElementById('ui-gameover').style.display = 'flex';
+            }
+          }
+        });
+      }
+
+      timeLeft = 60;
         document.getElementById('time').innerText = timeLeft;
         timerInterval = setInterval(() => {
           timeLeft--;
@@ -962,43 +999,38 @@
       const now = Date.now();
 
       if (hitTarget) {
-        if (now - lastCatchTime < 3000) comboCount++; 
-        else comboCount = 1;
-        lastCatchTime = now;
-
-        const pitchMultiplier = 1 + (comboCount * 0.15); 
-        playSound('catch', pitchMultiplier); 
-
         const idx = parseInt(hitTarget.id.split('-')[1]);
-        const caughtData = existingHiders[idx];
-        hitTarget.remove(); 
         
-        const jelly = document.createElement('div');
-        jelly.className = 'jelly-busted'; jelly.innerText = '😳💦';
-        jelly.style.left = `${caughtData.pX}px`; jelly.style.top = `${caughtData.pY}px`;
-        mapContainer.appendChild(jelly);
+        // 💡 [핵심] 선착순 1명만 점수 인정 (Transaction)
+        if (db) {
+          const catchRef = firebase.database().ref('rooms/' + currentRoomId + '/caught/' + idx);
+          catchRef.transaction((current) => {
+            if (current === null) return true; // 아직 아무도 안 잡았으면 내 걸로 기록 시도
+            return; // 이미 누가 0.1초라도 빨리 잡았으면 기록 포기
+          }, (error, committed) => {
+            if (committed) {
+              // 👑 내가 1등으로 잡음!
+              myScore += 100;
+              document.getElementById('my-score').innerText = myScore;
+              
+              if (now - lastCatchTime < 3000) comboCount++; else comboCount = 1;
+              lastCatchTime = now;
+              
+              const pitchMultiplier = 1 + (comboCount * 0.15); 
+              playSound('catch', pitchMultiplier); 
+              showFloatingText(e.clientX, e.clientY, `🎯 내가 잡음! (+100)`, '#2ecc71');
 
-        mapContainer.classList.add('shake-screen');
-        setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
-
-        if (comboCount >= 2) {
-          let text = "DOUBLE KILL!"; let color = "#f1c40f";
-          if (comboCount === 3) { text = "TRIPLE KILL!"; color = "#e67e22"; }
-          else if (comboCount >= 4) { text = "UNSTOPPABLE!!"; color = "#ff4757"; }
-          showFloatingCombo(e.clientX, e.clientY, text, color);
-        } else {
-          showFloatingText(e.clientX, e.clientY, `🎯 검거!`, '#2ecc71');
-        }
-
-        const remaining = document.querySelectorAll('.target-obj').length;
-        document.getElementById('target-count').innerText = remaining;
-
-        if (remaining === 0) {
-          clearInterval(timerInterval);
-          showFloatingBanner("🎉 술래 완승! 모든 젤리를 검거했습니다!");
-          mode = 'gameover';
-          document.getElementById('ui-seek').style.display = 'none';
-          document.getElementById('ui-gameover').style.display = 'flex';
+              if (comboCount >= 2) {
+                let text = "DOUBLE KILL!"; let color = "#f1c40f";
+                if (comboCount === 3) { text = "TRIPLE KILL!"; color = "#e67e22"; }
+                else if (comboCount >= 4) { text = "UNSTOPPABLE!!"; color = "#ff4757"; }
+                showFloatingCombo(e.clientX, e.clientY, text, color);
+              }
+            } else {
+              // 😭 내가 눌렀는데 찰나의 차이로 남이 먼저 가져감
+              showFloatingText(e.clientX, e.clientY, `앗! 남이 먼저 낚아챔`, '#e67e22');
+            }
+          });
         }
       } else {
         playSound('miss'); 
@@ -1011,8 +1043,7 @@
 
         if (life <= 0) {
           clearInterval(timerInterval);
-          const randomTaunt = existingHiders[Math.floor(Math.random()*existingHiders.length)]?.taunt || "눈은 장식이냐 ㅋㅋ";
-          triggerGameOver(randomTaunt);
+          triggerGameOver("내 목숨 소진 ㅠㅠ");
         } else {
           showFloatingText(e.clientX, e.clientY, `❌ 헛방!`, '#e74c3c');
         }
@@ -1181,6 +1212,11 @@
           }
           mapContainer.appendChild(el);
         });
+
+        // ... (젤리 렌더링 코드 끝남) ...
+        mapContainer.appendChild(el);
+      });
+
 
         // 💡 [핵심 패치] 이 기기에서 이미 숨은 방인지 검사
         if (localStorage.getItem('hidden_' + id)) {
