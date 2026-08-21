@@ -1,18 +1,284 @@
-// 술래가 캔버스를 클릭했을 때
-canvas.addEventListener('click', (e) => {
-  if (mode !== 'seek') return;
-  
-  const pos = getMousePos(e);
-  
-  // 클릭한 좌표의 픽셀 데이터(rgba) 1x1 픽셀을 가져옴
-  const pixelData = ctx.getImageData(pos.x, pos.y, 1, 1).data;
-  const alpha = pixelData[3]; // 투명도 값 (0~255)
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>웹챠 카멜레온 V4 - 젤리의 모험</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; touch-action: none; }
+    
+    /* 상단 UI (상태창) */
+    #ui { padding: 10px; display: flex; gap: 10px; justify-content: center; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 10; font-weight: bold; }
+    button { padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 6px; border: none; font-size: 14px; transition: 0.1s; }
+    button:active { transform: scale(0.95); }
+    #btn-absorb { background: #0fb9b1; color: white; }
+    #btn-eye { background: #f39c12; color: white; }
+    #btn-hide { background: #ff4757; color: white; }
+    #health-ui { display: none; color: #ff4757; font-size: 18px; }
 
-  if (alpha > 0) {
-    // 투명하지 않은 곳 (그림이 그려진 곳)을 정확히 눌렀음! -> 🎯 검거 성공
-    triggerBustedEvent(); 
-  } else {
-    // 투명한 곳을 눌렀음 -> ❌ 헛방! (목숨 차감)
-    triggerMissEvent();
-  }
-});
+    /* 맵 (가짜 주식 차트를 그릴 캔버스) */
+    #map-container { position: relative; width: 100vw; height: calc(100vh - 50px); overflow: hidden; cursor: crosshair; }
+    #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+    /* 젤리 캐릭터 (플레이어) */
+    #player {
+      position: absolute; width: 40px; height: 40px;
+      background-color: #fff; border-radius: 50% 50% 40% 40%;
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      z-index: 5; box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+      display: flex; justify-content: center; align-items: center;
+      transition: background-color 0.3s;
+    }
+    
+    /* 걷는 애니메이션 */
+    .walking { animation: waddle 0.3s infinite alternate; }
+    @keyframes waddle {
+      0% { transform: translate(-50%, -50%) rotate(-10deg) scaleY(0.95); }
+      100% { transform: translate(-50%, -50%) rotate(10deg) scaleY(1.05); }
+    }
+
+    /* 젤리의 눈알 (선택 사항) */
+    #player-face { font-size: 20px; user-select: none; transition: opacity 0.2s; }
+    
+    /* 숨기 완료 - 납작해짐 & 숨쉬기 */
+    .hiding {
+      animation: flatten 0.3s forwards, breath 4s infinite 1s !important;
+      box-shadow: none !important; border-radius: 10px !important;
+    }
+    @keyframes flatten {
+      0% { width: 40px; height: 40px; }
+      100% { width: 50px; height: 15px; border-radius: 4px; }
+    }
+    @keyframes breath {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); filter: brightness(1); }
+      50% { transform: translate(-50%, -50%) scale(1.05); filter: brightness(1.1); }
+    }
+
+    /* 화면 진동 (피격 / 검거) */
+    .shake-screen { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-4px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-8px, -4px, 0); }
+      40%, 60% { transform: translate3d(8px, 4px, 0); }
+    }
+
+    /* 모바일 가상 조이스틱 */
+    #joystick-zone {
+      position: absolute; bottom: 20px; left: 20px;
+      width: 120px; height: 120px; background: rgba(255,255,255,0.1);
+      border-radius: 50%; z-index: 20; display: none; touch-action: none;
+    }
+    #joystick-knob {
+      position: absolute; top: 40px; left: 40px;
+      width: 40px; height: 40px; background: rgba(255,255,255,0.5);
+      border-radius: 50%; pointer-events: none;
+    }
+
+    /* 플로팅 텍스트 */
+    .floating-text {
+      position: absolute; font-weight: 900; font-size: 24px;
+      text-shadow: 2px 2px 0 #000; pointer-events: none;
+      animation: floatUp 1.5s ease-out forwards; z-index: 100;
+    }
+    @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 1; } 100% { transform: translateY(-50px) scale(1); opacity: 0; } }
+  </style>
+</head>
+<body>
+
+  <div id="ui">
+    <div id="hider-ui">
+      <button id="btn-absorb">💉 바닥 색 흡수 (Space)</button>
+      <button id="btn-eye">👀 눈알 붙이기</button>
+      <button id="btn-hide">🤫 숨참기 (납작!)</button>
+    </div>
+    <div id="health-ui">❤️ <span id="life">3</span> | ⏱️ <span id="time">0.00</span>초</div>
+  </div>
+
+  <div id="map-container">
+    <canvas id="bg-canvas"></canvas>
+    <div id="player"><div id="player-face"></div></div>
+    
+    <!-- 모바일 조이스틱 -->
+    <div id="joystick-zone"><div id="joystick-knob"></div></div>
+  </div>
+
+  <script>
+    const mapContainer = document.getElementById('map-container');
+    const bgCanvas = document.getElementById('bg-canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    const player = document.getElementById('player');
+    const face = document.getElementById('player-face');
+    
+    // 게임 상태
+    let mode = 'move'; // move | hide | seek
+    let playerPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let velocity = { x: 0, y: 0 };
+    const speed = 4;
+    let keys = {};
+    
+    let startTime, timerInterval;
+    let life = 3;
+
+    // --- 1. 가짜 주식 차트 맵 생성 ---
+    function drawFakeMap() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+      bgCtx.fillStyle = '#1e272e';
+      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      
+      // 그리드
+      bgCtx.strokeStyle = '#2f3640'; bgCtx.lineWidth = 1;
+      for(let i=0; i<bgCanvas.width; i+=50) { bgCtx.beginPath(); bgCtx.moveTo(i, 0); bgCtx.lineTo(i, bgCanvas.height); bgCtx.stroke(); }
+      for(let i=0; i<bgCanvas.height; i+=50) { bgCtx.beginPath(); bgCtx.moveTo(0, i); bgCtx.lineTo(bgCanvas.width, i); bgCtx.stroke(); }
+
+      // 캔들스틱 (양봉/음봉)
+      for(let i=0; i<50; i++) {
+        let x = Math.random() * bgCanvas.width;
+        let y = Math.random() * bgCanvas.height;
+        let isUp = Math.random() > 0.5;
+        bgCtx.fillStyle = isUp ? '#05c46b' : '#ff3f34';
+        bgCtx.fillRect(x, y, 15, Math.random() * 100 + 20); // 몸통
+        bgCtx.fillRect(x + 6, y - 20, 3, Math.random() * 140 + 40); // 꼬리
+      }
+    }
+    drawFakeMap();
+    window.addEventListener('resize', drawFakeMap);
+
+    // --- 2. 이동 로직 (PC 키보드) ---
+    window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; if(e.code === 'Space') absorbColor(); });
+    window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+    // --- 3. 모바일 조이스틱 ---
+    const joyZone = document.getElementById('joystick-zone');
+    const joyKnob = document.getElementById('joystick-knob');
+    if ('ontouchstart' in window) joyZone.style.display = 'block';
+
+    let joyCenter = {x: 60, y: 60};
+    joyZone.addEventListener('touchmove', (e) => {
+      if (mode !== 'move') return;
+      e.preventDefault();
+      const rect = joyZone.getBoundingClientRect();
+      let touchX = e.touches[0].clientX - rect.left;
+      let touchY = e.touches[0].clientY - rect.top;
+      
+      let dx = touchX - joyCenter.x;
+      let dy = touchY - joyCenter.y;
+      let distance = Math.sqrt(dx*dx + dy*dy);
+      let maxDist = 40;
+
+      if(distance > maxDist) { dx = dx * (maxDist/distance); dy = dy * (maxDist/distance); }
+      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      
+      velocity.x = (dx / maxDist) * speed;
+      velocity.y = (dy / maxDist) * speed;
+    });
+    joyZone.addEventListener('touchend', () => { velocity.x = 0; velocity.y = 0; joyKnob.style.transform = `translate(0px, 0px)`; });
+
+    // --- 4. 게임 루프 ---
+    function gameLoop() {
+      if (mode === 'move') {
+        if (keys['w'] || keys['arrowup']) velocity.y = -speed;
+        else if (keys['s'] || keys['arrowdown']) velocity.y = speed;
+        else if (!('ontouchstart' in window)) velocity.y = 0;
+
+        if (keys['a'] || keys['arrowleft']) velocity.x = -speed;
+        else if (keys['d'] || keys['arrowright']) velocity.x = speed;
+        else if (!('ontouchstart' in window)) velocity.x = 0;
+
+        playerPos.x += velocity.x;
+        playerPos.y += velocity.y;
+        
+        // 화면 밖 이탈 방지
+        playerPos.x = Math.max(20, Math.min(window.innerWidth - 20, playerPos.x));
+        playerPos.y = Math.max(20, Math.min(window.innerHeight - 20, playerPos.y));
+
+        player.style.left = `${playerPos.x}px`;
+        player.style.top = `${playerPos.y}px`;
+
+        if (velocity.x !== 0 || velocity.y !== 0) player.classList.add('walking');
+        else player.classList.remove('walking');
+      }
+      requestAnimationFrame(gameLoop);
+    }
+    gameLoop();
+
+    // --- 5. 카멜레온 액션 ---
+    function absorbColor() {
+      if (mode !== 'move') return;
+      // 플레이어 중앙 좌표의 배경색 추출
+      const pData = bgCtx.getImageData(playerPos.x, playerPos.y, 1, 1).data;
+      player.style.backgroundColor = `rgb(${pData[0]}, ${pData[1]}, ${pData[2]})`;
+      // 작게 튀는 이펙트
+      player.style.transform = `translate(-50%, -50%) scale(1.2)`;
+      setTimeout(() => player.style.transform = `translate(-50%, -50%) scale(1)`, 150);
+    }
+    document.getElementById('btn-absorb').addEventListener('click', absorbColor);
+    
+    document.getElementById('btn-eye').addEventListener('click', () => {
+      face.innerText = face.innerText === '👀' ? '' : '👀';
+    });
+
+    // --- 6. 숨기 완료 & 술래 모드 ---
+    document.getElementById('btn-hide').addEventListener('click', () => {
+      mode = 'seek';
+      document.getElementById('hider-ui').style.display = 'none';
+      document.getElementById('health-ui').style.display = 'block';
+      joyZone.style.display = 'none';
+      
+      player.className = 'hiding'; // 납작해짐 + 숨쉬기
+      
+      startTime = Date.now();
+      timerInterval = setInterval(() => { document.getElementById('time').innerText = ((Date.now() - startTime) / 1000).toFixed(2); }, 50);
+    });
+
+    // --- 7. 타격 판정 (술래 클릭) ---
+    mapContainer.addEventListener('click', (e) => {
+      if (mode !== 'seek') return;
+      
+      // 플레이어와 클릭 좌표 간의 거리 계산
+      const dx = e.clientX - playerPos.x;
+      const dy = e.clientY - playerPos.y;
+      const distance = Math.sqrt(dx*dx + dy*dy);
+
+      if (distance < 25) {
+        // 🎯 명중! (검거 성공)
+        clearInterval(timerInterval);
+        player.className = '';
+        player.style.backgroundColor = '#fff';
+        face.innerText = '😳💦';
+        
+        mapContainer.classList.add('shake-screen');
+        setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+
+        showFloatingText(e.clientX, e.clientY, `🎯 ${(Date.now() - startTime)/1000}초 컷!`, '#05c46b');
+        mode = 'gameover';
+      } else {
+        // ❌ 헛방! (목숨 차감)
+        life--;
+        document.getElementById('life').innerText = life;
+        
+        mapContainer.classList.add('shake-screen');
+        setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+        showFloatingText(e.clientX, e.clientY, `❌ 빗나감!`, '#ff4757');
+
+        if (life <= 0) {
+          clearInterval(timerInterval);
+          alert("목숨을 모두 잃었습니다! 젤리의 승리입니다.");
+          mode = 'gameover';
+        }
+      }
+    });
+
+    function showFloatingText(x, y, text, color) {
+      const ft = document.createElement('div');
+      ft.className = 'floating-text';
+      ft.style.color = color;
+      ft.innerText = text;
+      ft.style.left = `${x - 40}px`;
+      ft.style.top = `${y - 20}px`;
+      document.body.appendChild(ft);
+    }
+  </script>
+</body>
+</html>
