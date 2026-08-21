@@ -4,16 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>웹챠 카멜레온 (Webcha Chameleon)</title>
+
+  <!-- 💡 안정적인 Firebase v8 세팅 (에러 안남!) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <style>
-    /* 모바일 해상도 밀림(스크롤)을 완벽 차단하는 100dvh 및 Flex 레이아웃 */
-    body { 
-      margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      background: #111; color: white; overflow: hidden; 
-      display: flex; flex-direction: column; height: 100dvh; 
-      touch-action: none; user-select: none; -webkit-user-select: none;
-    }
+    body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; }
     
-    /* 상단 UI 바 */
     #ui { flex-shrink: 0; padding: 8px 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 10; box-sizing: border-box; }
     .ui-group { display: flex; gap: 8px; align-items: center; }
     button, input { padding: 6px 12px; font-weight: bold; border-radius: 6px; border: none; font-size: 14px; transition: 0.1s; box-sizing: border-box; }
@@ -25,27 +23,20 @@
     .btn-sub { background: #555; color: white; }
     .active-tool { border: 2px solid #ffd32a !important; background: #666; color: #ffd32a; }
 
-    .control-box { display: flex; align-items: center; gap: 5px; background: #333; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; }
+    /* 개선된 컨트롤 박스 */
+    .control-box { display: flex; align-items: center; gap: 4px; background: #333; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; }
+    .rot-btn { background: #555; color: white; padding: 2px 8px; border-radius: 4px; font-size: 16px; border: none; }
+    .rot-btn:active { background: #777; }
+    
     #taunt-input { width: 130px; padding: 5px; background: #fff; color: #111; border: 2px solid #e74c3c; }
 
-    /* 맵 캔버스 영역 */
     #map-container { flex-grow: 1; position: relative; width: 100vw; overflow: hidden; background: #fff; cursor: crosshair; }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-    /* 플레이어 & 기존 주차 오브젝트 */
-    .player-obj {
-      position: absolute; transform: translate(-50%, -50%); z-index: 5;
-      box-sizing: border-box; display: flex; justify-content: center; align-items: center;
-      background-size: 100% 100%; pointer-events: none;
-    }
+    .player-obj { position: absolute; transform: translate(-50%, -50%); z-index: 5; box-sizing: border-box; display: flex; justify-content: center; align-items: center; background-size: 100% 100%; pointer-events: none; }
     #local-player { border: 2px dashed #e74c3c; background: rgba(231, 76, 60, 0.1); }
     
-    /* 크기 조절 핸들 (모바일 터치 편의성을 위해 30px로 확대!) */
-    #resize-handle {
-      position: absolute; right: -15px; bottom: -15px; width: 30px; height: 30px;
-      background: #f1c40f; border: 2px solid #222; border-radius: 50%; cursor: se-resize; z-index: 25;
-      pointer-events: auto; box-shadow: 0 0 5px rgba(0,0,0,0.5);
-    }
+    #resize-handle { position: absolute; right: -15px; bottom: -15px; width: 30px; height: 30px; background: #f1c40f; border: 2px solid #222; border-radius: 50%; cursor: se-resize; z-index: 25; pointer-events: auto; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
 
     #doodle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; cursor: crosshair; z-index: 10; pointer-events: auto; }
     #crosshair { position: absolute; color: #e74c3c; font-weight: bold; font-size: 18px; pointer-events: none; }
@@ -57,12 +48,8 @@
     @keyframes waddle { 0% { margin-left: -2px; } 100% { margin-left: 2px; } }
 
     .breathing { box-shadow: none !important; animation: breath 5s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
-    @keyframes breath { 
-      0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)); } 
-      50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)); } 
-    }
+    @keyframes breath { 0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)); } 50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)); } }
 
-    /* 검거 연출 */
     .jelly-busted { position: absolute; font-size: 45px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
     @keyframes popOut { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
     @keyframes tremble { 0%, 100% { margin-left: -3px; } 50% { margin-left: 3px; } }
@@ -73,30 +60,13 @@
     .floating-text { position: absolute; font-weight: 900; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; white-space: nowrap; }
     @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
 
-    /* 인성질 플로팅 배너 (가볍게 둥둥!) */
-    .taunt-floating-banner {
-      position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%);
-      background: #ff4757; color: white; padding: 16px 28px; border-radius: 50px;
-      font-size: 22px; font-weight: 900; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-      z-index: 150; pointer-events: none; border: 4px solid #fff;
-      animation: popTaunt 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-      white-space: nowrap;
-    }
-    @keyframes popTaunt {
-      0% { transform: translate(-50%, -50%) scale(0.4) rotate(-10deg); opacity: 0; }
-      100% { transform: translate(-50%, -50%) scale(1) rotate(-3deg); opacity: 1; }
-    }
+    .taunt-floating-banner { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); background: #ff4757; color: white; padding: 16px 28px; border-radius: 50px; font-size: 22px; font-weight: 900; box-shadow: 0 10px 25px rgba(0,0,0,0.4); z-index: 150; pointer-events: none; border: 4px solid #fff; animation: popTaunt 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; white-space: nowrap; }
+    @keyframes popTaunt { 0% { transform: translate(-50%, -50%) scale(0.4) rotate(-10deg); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1) rotate(-3deg); opacity: 1; } }
 
-    /* 모바일 조이스틱 & 오른손 액션 버튼 */
     #joystick-zone { position: absolute; bottom: 30px; left: 20px; width: 100px; height: 100px; background: rgba(0,0,0,0.2); border-radius: 50%; z-index: 20; display: none; }
     #joystick-knob { position: absolute; top: 30px; left: 30px; width: 40px; height: 40px; background: rgba(255,255,255,0.7); border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
     
-    #mobile-action-btn {
-      position: absolute; bottom: 40px; right: 20px; width: 70px; height: 70px; 
-      background: #3498db; border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.5); 
-      z-index: 30; color: white; font-size: 28px; font-weight: bold; 
-      display: none; justify-content: center; align-items: center; cursor: pointer;
-    }
+    #mobile-action-btn { position: absolute; bottom: 40px; right: 20px; width: 70px; height: 70px; background: #3498db; border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 30; color: white; font-size: 28px; font-weight: bold; display: none; justify-content: center; align-items: center; cursor: pointer; }
     #mobile-action-btn:active { transform: scale(0.9); }
   </style>
 </head>
@@ -105,31 +75,34 @@
   <div id="ui">
     <div style="font-weight:900; color:#3498db; font-size:16px;">🦎 웹챠 카멜레온</div>
 
-    <!-- 1. 탐색 모드 -->
     <div id="ui-move" class="ui-group" style="display:none;">
-      <span style="font-size:12px; color:#aaa;" id="overlap-warning">노란 점: 크기조절</span>
-      <button class="btn-main" onclick="window.copyBackground()">📸 스캔 (Space)</button>
+      <span style="font-size:12px; color:#aaa;" id="overlap-warning">노란 점 드래그: 크기조절</span>
+      <button class="btn-main" id="btn-copy" onclick="window.copyBackground()">📸 스캔 (Space)</button>
     </div>
     
-    <!-- 2. 편집/그리기/주차 모드 -->
     <div id="ui-edit" class="ui-group" style="display:none;">
-      <div class="control-box">🔄 <input type="range" id="rot-slider" min="0" max="360" value="0" style="width:50px;"></div>
+      <!-- 💡 회전 UX 완벽 개선: +, - 버튼과 넓어진 슬라이더 -->
+      <div class="control-box">
+        🔄 
+        <button class="rot-btn" onclick="window.adjustRot(-1)">-</button>
+        <input type="range" id="rot-slider" min="0" max="360" value="0" style="width:100px;">
+        <button class="rot-btn" onclick="window.adjustRot(1)">+</button>
+      </div>
+      
       <input type="color" id="doodle-color" value="#000000" style="padding:1px; width:28px; height:28px;">
       <button id="btn-pen" class="btn-sub active-tool" onclick="window.setTool('pen')">🖌️</button>
       <button id="btn-eraser" class="btn-sub" onclick="window.setTool('eraser')">🧹</button>
       <button class="btn-sub" onclick="window.toggleEye()">👀</button>
       <input type="text" id="taunt-input" placeholder="인성질 멘트" maxlength="20">
-      <button class="btn-action" onclick="window.finishHiding()">🤫 주차 (Space)</button>
+      <button class="btn-action" id="btn-hide" onclick="window.finishHiding()">🤫 주차 (Space)</button>
     </div>
 
-    <!-- 3. 파티 대기실 -->
     <div id="ui-share" class="ui-group" style="display:none;">
       <span id="room-status-text" style="color:#2ecc71; font-size:13px; font-weight:bold;"></span>
       <button class="btn-main" onclick="window.copyLink()">🔗 방 링크 복사</button>
       <button class="btn-action" onclick="window.startPartySeek()">🔍 술래 시작</button>
     </div>
 
-    <!-- 4. 술래 모드 (상단에 크고 명확하게 제한시간 표시) -->
     <div id="ui-seek" class="ui-group" style="display:none; width: 100%; justify-content: space-between; padding: 0 10px;">
       <span style="color:#e74c3c; font-size:18px; font-weight:bold;">❤️ <span id="life">3</span></span>
       <span style="color:#2ecc71; font-size:16px; font-weight:bold;">남은 타겟: <span id="target-count">1</span>명</span>
@@ -138,7 +111,6 @@
       </span>
     </div>
 
-    <!-- 5. 게임오버 바 -->
     <div id="ui-gameover" class="ui-group" style="display:none;">
       <button class="btn-main" onclick="location.href=location.pathname">🔄 새 게임 만들기</button>
     </div>
@@ -154,16 +126,14 @@
       <div id="resize-handle"></div>
     </div>
 
-    <!-- 모바일 전용 패드 UI -->
     <div id="joystick-zone"><div id="joystick-knob"></div></div>
     <div id="mobile-action-btn">📸</div>
   </div>
 
-  <script type="module">
-    // Firebase v12 최신 모듈 임포트
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
-
+  <script>
+    // ==========================================
+    // 💡 Firebase v8 안정화 버전 연동 (충돌 방지)
+    // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyDYmOC4OiW90_8ee0ndpO6xSRSBKJENlws",
       authDomain: "webcchachameleon.firebaseapp.com",
@@ -176,10 +146,12 @@
 
     let db = null;
     try {
-      const app = initializeApp(firebaseConfig);
-      db = getDatabase(app);
-      console.log("Firebase 연동 성공!");
-    } catch(e) { console.warn("Firebase Init Error -> 로컬 모드", e); }
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+      console.log("Firebase Database 연결 성공!");
+    } catch(e) {
+      console.warn("Firebase 연결 실패 -> 로컬 모드로 작동합니다.", e);
+    }
 
     const mapContainer = document.getElementById('map-container');
     const bgCanvas = document.getElementById('bg-canvas');
@@ -197,7 +169,7 @@
     const speed = 4;
     let keys = {};
     let life = 3, timeLeft = 180, timerInterval;
-    let isJoystickActive = false; // 조이스틱 vs 키보드 충돌 방지
+    let isJoystickActive = false;
     
     let currentRoomId = null;
     let currentMapIndex = 0;
@@ -206,14 +178,14 @@
     let tauntMessage = "시력 장식이냐? 젤리 승리 ㅋㅋ";
 
     const dpr = window.devicePixelRatio || 1;
-    // 더욱 강력한 모바일 기기 감지
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     
     const actionBtn = document.getElementById('mobile-action-btn');
     if (isMobile) {
       document.getElementById('joystick-zone').style.display = 'block';
       actionBtn.style.display = 'flex';
-      document.getElementById('btn-copy').innerText = '📸 스캔 (터치)';
+      document.getElementById('btn-copy').innerText = '📸 스캔';
+      document.getElementById('btn-hide').innerText = '🤫 주차';
     }
 
     function seededRandom() {
@@ -221,7 +193,6 @@
       return x - Math.floor(x);
     }
 
-    // 맵 7종
     const mapGenerators = [
       function drawYoutube() {
         bgCtx.fillStyle = '#0f0f0f'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
@@ -275,15 +246,6 @@
           bgCtx.fillStyle = '#ff4757'; bgCtx.fillRect(x, y+120, 110, 30);
           bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 13px sans-serif'; bgCtx.fillText('결제하기', x+28, y+140);
         }
-      },
-      function drawCode() {
-        bgCtx.fillStyle = '#282c34'; bgCtx.fillRect(0, 0, bgCanvas.width/dpr, bgCanvas.height/dpr);
-        bgCtx.font = '15px monospace';
-        const codeLines = ['const targets = findChameleon();', 'if (targets.length === 9) { win(); }', 'else { alert("Fail"); }'];
-        for(let i=0; i<12; i++) {
-          bgCtx.fillStyle = ['#e06c75', '#98c379', '#61afef'][i%3];
-          bgCtx.fillText(codeLines[i%3], 40, 50 + i*25);
-        }
       }
     ];
 
@@ -297,7 +259,7 @@
     window.addEventListener('resize', renderMap);
 
     // ==========================================
-    // 🔍 뷰파인더 크기 조절 (모바일 호환)
+    // 🔍 뷰파인더 크기 조절
     // ==========================================
     let isResizing = false;
     function onResizeStart(e) {
@@ -326,16 +288,18 @@
       if (isResizing) { e.preventDefault(); handleResizeMove(e.touches[0].clientX, e.touches[0].clientY); }
     }, { passive: false });
 
+
     // ==========================================
-    // 🎨 낙서 시스템 (회전 좌표계 완벽 적용)
+    // 🎨 낙서 (회전 좌표 완벽 매핑 및 커서)
     // ==========================================
     let isDrawing = false; let drawTool = 'pen';
+    
     window.setTool = (t) => {
       drawTool = t;
       document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen');
       document.getElementById('btn-eraser').classList.toggle('active-tool', t === 'eraser');
       doodleCtx.globalCompositeOperation = t === 'eraser' ? 'destination-out' : 'source-over';
-      doodleCanvas.style.cursor = t === 'eraser' ? 'cell' : 'crosshair'; // 툴에 따른 마우스 커서
+      doodleCanvas.style.cursor = t === 'eraser' ? 'cell' : 'crosshair';
     };
 
     function getDoodlePos(e) {
@@ -359,7 +323,7 @@
     }
     function draw(e) {
       if (!isDrawing || mode !== 'edit') return;
-      if (e.touches) e.preventDefault(); // 모바일 스크롤 방지
+      if (e.touches) e.preventDefault(); 
       const p = getDoodlePos(e); doodleCtx.lineTo(p.x, p.y); doodleCtx.stroke();
     }
     
@@ -372,8 +336,26 @@
     window.addEventListener('touchend', () => { isDrawing = false; });
 
     // ==========================================
-    // 📸 스캔 & 주차 시스템
+    // 🎛️ 회전 및 스캔 & 주차 시스템
     // ==========================================
+    
+    // 💡 회전 미세조정 버튼 기능 (+, -)
+    window.adjustRot = (val) => {
+      let current = parseInt(rotSlider.value);
+      current = (current + val) % 360;
+      if(current < 0) current += 360;
+      rotSlider.value = current;
+      applyRotation(current);
+    };
+
+    rotSlider.addEventListener('input', (e) => applyRotation(e.target.value));
+
+    function applyRotation(deg) {
+      rotation = deg;
+      localPlayer.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+      localPlayer.style.setProperty('--rot', `${rotation}deg`);
+    }
+
     window.addEventListener('keydown', e => { 
       keys[e.key.toLowerCase()] = true; 
       if(e.code === 'Space') {
@@ -384,15 +366,11 @@
     });
     window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-    // 모바일 전용 액션 버튼 로직
     if (isMobile) {
       actionBtn.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        if (mode === 'move') {
-          window.copyBackground();
-        } else if (mode === 'edit') {
-          window.finishHiding();
-        }
+        if (mode === 'move') window.copyBackground();
+        else if (mode === 'edit') window.finishHiding();
       });
     }
 
@@ -430,13 +408,8 @@
     };
 
     window.toggleEye = () => { localFace.innerText = localFace.innerText === '👀' ? '' : '👀'; };
-    rotSlider.addEventListener('input', (e) => {
-      rotation = e.target.value;
-      localPlayer.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
-      localPlayer.style.setProperty('--rot', `${rotation}deg`);
-    });
-
-    window.finishHiding = async () => {
+    
+    window.finishHiding = () => {
       if (mode !== 'edit') return;
       const userTaunt = document.getElementById('taunt-input').value.trim();
       if (userTaunt) tauntMessage = userTaunt;
@@ -448,32 +421,37 @@
 
       const bgImg = new Image();
       bgImg.src = localPlayer.style.backgroundImage.slice(5, -2);
-      await new Promise(r => bgImg.onload = r);
-      mCtx.drawImage(bgImg, 0, 0, mergedCanvas.width, mergedCanvas.height);
-      mCtx.drawImage(doodleCanvas, 0, 0); 
+      bgImg.onload = () => {
+        mCtx.drawImage(bgImg, 0, 0, mergedCanvas.width, mergedCanvas.height);
+        mCtx.drawImage(doodleCanvas, 0, 0); 
 
-      const myData = {
-        pX: pX, pY: pY, pWidth: pWidth, pHeight: pHeight, rotation: rotation,
-        hasEye: (localFace.innerText === '👀'),
-        image: mergedCanvas.toDataURL(),
-        taunt: tauntMessage
+        const myData = {
+          pX: pX, pY: pY, pWidth: pWidth, pHeight: pHeight, rotation: rotation,
+          hasEye: (localFace.innerText === '👀'),
+          image: mergedCanvas.toDataURL(),
+          taunt: tauntMessage
+        };
+
+        saveData(myData);
       };
+    };
 
+    function saveData(myData) {
       if (db) {
-        const roomRef = ref(db, 'rooms/' + currentRoomId);
-        const snap = await get(roomRef);
-        let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
-        if (!roomData.list) roomData.list = [];
-        roomData.list.push(myData);
-        await set(roomRef, roomData);
-        showShareScreen(roomData.list.length);
+        const roomRef = firebase.database().ref('rooms/' + currentRoomId);
+        roomRef.once('value').then(snap => {
+          let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
+          if (!roomData.list) roomData.list = [];
+          roomData.list.push(myData);
+          roomRef.set(roomData).then(() => showShareScreen(roomData.list.length));
+        });
       } else {
         let roomData = JSON.parse(localStorage.getItem('room_' + currentRoomId)) || { mapIndex: currentMapIndex, list: [] };
         roomData.list.push(myData);
         localStorage.setItem('room_' + currentRoomId, JSON.stringify(roomData));
         showShareScreen(roomData.list.length);
       }
-    };
+    }
 
     function showShareScreen(count) {
       mode = 'share';
@@ -493,60 +471,60 @@
     };
 
     // ==========================================
-    // 🕵️ 술래 모드 및 플로팅 멘트
+    // 🕵️ 술래 모드 
     // ==========================================
-    async function initSeeker(id) {
-      let roomData = null;
+    function initSeeker(id) {
       if (db) {
-        const snap = await get(ref(db, 'rooms/' + id));
-        if (snap.exists()) roomData = snap.val();
+        firebase.database().ref('rooms/' + id).once('value').then(snap => {
+          if (snap.exists()) startSeekerMode(snap.val());
+          else alert("데이터를 찾을 수 없습니다.");
+        });
       } else {
         const local = localStorage.getItem('room_' + id);
-        if (local) roomData = JSON.parse(local);
+        if (local) startSeekerMode(JSON.parse(local));
+        else alert("데이터를 찾을 수 없습니다.");
       }
+    }
 
-      if (roomData) {
-        mode = 'seek';
-        currentMapIndex = roomData.mapIndex;
-        renderMap();
-        localPlayer.style.display = 'none';
+    function startSeekerMode(roomData) {
+      mode = 'seek';
+      currentMapIndex = roomData.mapIndex;
+      renderMap();
+      localPlayer.style.display = 'none';
 
-        existingHiders = roomData.list || [];
-        document.getElementById('target-count').innerText = existingHiders.length;
-        document.getElementById('ui-move').style.display = 'none';
-        document.getElementById('ui-seek').style.display = 'flex';
-        if (isMobile) { document.getElementById('joystick-zone').style.display = 'none'; actionBtn.style.display = 'none'; }
+      existingHiders = roomData.list || [];
+      document.getElementById('target-count').innerText = existingHiders.length;
+      document.getElementById('ui-move').style.display = 'none';
+      document.getElementById('ui-seek').style.display = 'flex';
+      if (isMobile) { document.getElementById('joystick-zone').style.display = 'none'; actionBtn.style.display = 'none'; }
 
-        existingHiders.forEach((data, idx) => {
-          const el = document.createElement('div');
-          el.className = 'player-obj copied breathing target-obj';
-          el.id = `target-${idx}`;
-          el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
-          el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
-          el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
-          el.style.setProperty('--rot', `${data.rotation}deg`);
-          el.style.backgroundImage = `url(${data.image})`;
-          if(data.hasEye) {
-            const eye = document.createElement('span');
-            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
-          }
-          mapContainer.appendChild(el);
-        });
+      existingHiders.forEach((data, idx) => {
+        const el = document.createElement('div');
+        el.className = 'player-obj copied breathing target-obj';
+        el.id = `target-${idx}`;
+        el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
+        el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
+        el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
+        el.style.setProperty('--rot', `${data.rotation}deg`);
+        el.style.backgroundImage = `url(${data.image})`;
+        if(data.hasEye) {
+          const eye = document.createElement('span');
+          eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
+        }
+        mapContainer.appendChild(el);
+      });
 
-        // 타이머 시작 (180초)
+      // 넉넉한 타이머 (180초)
+      timeLeft = 180;
+      document.getElementById('time').innerText = timeLeft;
+      timerInterval = setInterval(() => {
+        timeLeft--;
         document.getElementById('time').innerText = timeLeft;
-        timerInterval = setInterval(() => {
-          timeLeft--;
-          document.getElementById('time').innerText = timeLeft;
-          if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            triggerGameOver("시간 초과! 젤리들의 승리 ⏱️");
-          }
-        }, 1000);
-      } else {
-        alert("데이터를 찾을 수 없습니다.");
-        location.href = location.pathname;
-      }
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          triggerGameOver("시간 초과! 젤리들의 승리 ⏱️");
+        }
+      }, 1000);
     }
 
     mapContainer.addEventListener('click', (e) => {
@@ -615,7 +593,7 @@
     }
 
     // ==========================================
-    // 🕹️ 조이스틱 및 이동 로직 (모바일 반응형 완벽 패치)
+    // 🕹️ 조이스틱 및 캐릭터 이동 로직 
     // ==========================================
     const joyZone = document.getElementById('joystick-zone');
     const joyKnob = document.getElementById('joystick-knob');
@@ -649,8 +627,8 @@
     joyZone.addEventListener('touchcancel', releaseJoy);
 
     function gameLoop() {
+      // 💡 edit(편집) 모드일 때도 키보드/조이스틱 이동 가능!
       if (mode === 'move' || mode === 'edit') {
-        // 키보드 조작 (조이스틱을 안 쓸 때만)
         if (!isJoystickActive) {
           vY = 0; vX = 0;
           if (keys['w'] || keys['arrowup']) vY = -speed; else if (keys['s'] || keys['arrowdown']) vY = speed;
@@ -666,14 +644,14 @@
       requestAnimationFrame(gameLoop);
     }
 
-    async function initSystem() {
+    function initSystem() {
       const urlParams = new URLSearchParams(window.location.search);
       currentRoomId = urlParams.get('room');
       const isSeekMode = urlParams.get('mode') === 'seek';
 
       if (currentRoomId) {
-        if (isSeekMode) await initSeeker(currentRoomId);
-        else await initJoinHider(currentRoomId);
+        if (isSeekMode) initSeeker(currentRoomId);
+        else initJoinHider(currentRoomId);
       } else {
         currentRoomId = Math.random().toString(36).substr(2, 6);
         currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
@@ -687,46 +665,46 @@
       }
     }
 
-    async function initJoinHider(id) {
-      let roomData = null;
+    function initJoinHider(id) {
       if (db) {
-        const snap = await get(ref(db, 'rooms/' + id));
-        if (snap.exists()) roomData = snap.val();
+        firebase.database().ref('rooms/' + id).once('value').then(snap => {
+          if (snap.exists()) setupJoinHider(snap.val());
+          else { alert("방을 찾을 수 없어 새 방을 엽니다."); initSystem(); }
+        });
       } else {
         const local = localStorage.getItem('room_' + id);
-        if (local) roomData = JSON.parse(local);
-      }
-
-      if (roomData) {
-        currentMapIndex = roomData.mapIndex;
-        existingHiders = roomData.list || [];
-        mode = 'move'; renderMap();
-        pWidth = 80; pHeight = 80;
-        pX = Math.round(mapContainer.clientWidth / 2); pY = Math.round(mapContainer.clientHeight / 2);
-        document.getElementById('ui-move').style.display = 'flex';
-        localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
-
-        existingHiders.forEach((data) => {
-          const el = document.createElement('div');
-          el.className = 'player-obj copied breathing';
-          el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
-          el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
-          el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
-          el.style.setProperty('--rot', `${data.rotation}deg`);
-          el.style.backgroundImage = `url(${data.image})`;
-          if(data.hasEye) {
-            const eye = document.createElement('span');
-            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
-          }
-          mapContainer.appendChild(el);
-        });
-
-        gameLoop();
-      } else {
-        location.href = location.pathname;
+        if (local) setupJoinHider(JSON.parse(local));
       }
     }
 
+    function setupJoinHider(roomData) {
+      currentMapIndex = roomData.mapIndex;
+      existingHiders = roomData.list || [];
+      mode = 'move'; renderMap();
+      pWidth = 80; pHeight = 80;
+      pX = Math.round(mapContainer.clientWidth / 2); pY = Math.round(mapContainer.clientHeight / 2);
+      document.getElementById('ui-move').style.display = 'flex';
+      localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
+
+      existingHiders.forEach((data) => {
+        const el = document.createElement('div');
+        el.className = 'player-obj copied breathing';
+        el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
+        el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
+        el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
+        el.style.setProperty('--rot', `${data.rotation}deg`);
+        el.style.backgroundImage = `url(${data.image})`;
+        if(data.hasEye) {
+          const eye = document.createElement('span');
+          eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
+        }
+        mapContainer.appendChild(el);
+      });
+
+      gameLoop();
+    }
+
+    // 시스템 시동!
     initSystem();
   </script>
 </body>
