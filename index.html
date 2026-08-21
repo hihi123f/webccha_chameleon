@@ -5,10 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>웹챠 카멜레온 (Webcha Chameleon)</title>
   <style>
-    body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; touch-action: none; user-select: none; }
+    /* 모바일 해상도 밀림(스크롤)을 완벽 차단하는 100dvh 및 Flex 레이아웃 */
+    body { 
+      margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: #111; color: white; overflow: hidden; 
+      display: flex; flex-direction: column; height: 100dvh; 
+      touch-action: none; user-select: none; -webkit-user-select: none;
+    }
     
     /* 상단 UI 바 */
-    #ui { padding: 8px 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 10; min-height: 48px; box-sizing: border-box; }
+    #ui { flex-shrink: 0; padding: 8px 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 10; box-sizing: border-box; }
     .ui-group { display: flex; gap: 8px; align-items: center; }
     button, input { padding: 6px 12px; font-weight: bold; border-radius: 6px; border: none; font-size: 14px; transition: 0.1s; box-sizing: border-box; }
     button { cursor: pointer; }
@@ -20,10 +26,10 @@
     .active-tool { border: 2px solid #ffd32a !important; background: #666; color: #ffd32a; }
 
     .control-box { display: flex; align-items: center; gap: 5px; background: #333; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; }
-    #taunt-input { width: 140px; padding: 5px; background: #fff; color: #111; border: 2px solid #e74c3c; }
+    #taunt-input { width: 130px; padding: 5px; background: #fff; color: #111; border: 2px solid #e74c3c; }
 
     /* 맵 캔버스 영역 */
-    #map-container { position: relative; width: 100vw; height: calc(100vh - 65px); overflow: hidden; background: #fff; cursor: crosshair; }
+    #map-container { flex-grow: 1; position: relative; width: 100vw; overflow: hidden; background: #fff; cursor: crosshair; }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
     /* 플레이어 & 기존 주차 오브젝트 */
@@ -34,11 +40,11 @@
     }
     #local-player { border: 2px dashed #e74c3c; background: rgba(231, 76, 60, 0.1); }
     
-    /* 크기 조절 핸들 */
+    /* 크기 조절 핸들 (모바일 터치 편의성을 위해 30px로 확대!) */
     #resize-handle {
-      position: absolute; right: -8px; bottom: -8px; width: 22px; height: 22px;
+      position: absolute; right: -15px; bottom: -15px; width: 30px; height: 30px;
       background: #f1c40f; border: 2px solid #222; border-radius: 50%; cursor: se-resize; z-index: 25;
-      pointer-events: auto;
+      pointer-events: auto; box-shadow: 0 0 5px rgba(0,0,0,0.5);
     }
 
     #doodle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; cursor: crosshair; z-index: 10; pointer-events: auto; }
@@ -50,7 +56,6 @@
     .walking { animation: waddle 0.25s infinite alternate; }
     @keyframes waddle { 0% { margin-left: -2px; } 100% { margin-left: 2px; } }
 
-    /* 숨쉬기 애니메이션 (화질 보존용 1px 무빙) */
     .breathing { box-shadow: none !important; animation: breath 5s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
     @keyframes breath { 
       0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)); } 
@@ -68,11 +73,11 @@
     .floating-text { position: absolute; font-weight: 900; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; white-space: nowrap; }
     @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
 
-    /* 인성질 플로팅 배너 */
+    /* 인성질 플로팅 배너 (가볍게 둥둥!) */
     .taunt-floating-banner {
       position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%);
       background: #ff4757; color: white; padding: 16px 28px; border-radius: 50px;
-      font-size: 24px; font-weight: 900; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      font-size: 22px; font-weight: 900; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
       z-index: 150; pointer-events: none; border: 4px solid #fff;
       animation: popTaunt 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
       white-space: nowrap;
@@ -82,9 +87,17 @@
       100% { transform: translate(-50%, -50%) scale(1) rotate(-3deg); opacity: 1; }
     }
 
-    /* 모바일 조이스틱 */
-    #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 100px; height: 100px; background: rgba(0,0,0,0.2); border-radius: 50%; z-index: 20; display: none; }
-    #joystick-knob { position: absolute; top: 30px; left: 30px; width: 40px; height: 40px; background: rgba(255,255,255,0.6); border-radius: 50%; }
+    /* 모바일 조이스틱 & 오른손 액션 버튼 */
+    #joystick-zone { position: absolute; bottom: 30px; left: 20px; width: 100px; height: 100px; background: rgba(0,0,0,0.2); border-radius: 50%; z-index: 20; display: none; }
+    #joystick-knob { position: absolute; top: 30px; left: 30px; width: 40px; height: 40px; background: rgba(255,255,255,0.7); border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+    
+    #mobile-action-btn {
+      position: absolute; bottom: 40px; right: 20px; width: 70px; height: 70px; 
+      background: #3498db; border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.5); 
+      z-index: 30; color: white; font-size: 28px; font-weight: bold; 
+      display: none; justify-content: center; align-items: center; cursor: pointer;
+    }
+    #mobile-action-btn:active { transform: scale(0.9); }
   </style>
 </head>
 <body>
@@ -141,7 +154,9 @@
       <div id="resize-handle"></div>
     </div>
 
+    <!-- 모바일 전용 패드 UI -->
     <div id="joystick-zone"><div id="joystick-knob"></div></div>
+    <div id="mobile-action-btn">📸</div>
   </div>
 
   <script type="module">
@@ -164,9 +179,7 @@
       const app = initializeApp(firebaseConfig);
       db = getDatabase(app);
       console.log("Firebase 연동 성공!");
-    } catch(e) {
-      console.warn("Firebase Init Error -> 로컬 모드로 실행", e);
-    }
+    } catch(e) { console.warn("Firebase Init Error -> 로컬 모드", e); }
 
     const mapContainer = document.getElementById('map-container');
     const bgCanvas = document.getElementById('bg-canvas');
@@ -184,6 +197,7 @@
     const speed = 4;
     let keys = {};
     let life = 3, timeLeft = 180, timerInterval;
+    let isJoystickActive = false; // 조이스틱 vs 키보드 충돌 방지
     
     let currentRoomId = null;
     let currentMapIndex = 0;
@@ -192,10 +206,14 @@
     let tauntMessage = "시력 장식이냐? 젤리 승리 ㅋㅋ";
 
     const dpr = window.devicePixelRatio || 1;
-    const isMobile = 'ontouchstart' in window;
+    // 더욱 강력한 모바일 기기 감지
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    
+    const actionBtn = document.getElementById('mobile-action-btn');
     if (isMobile) {
       document.getElementById('joystick-zone').style.display = 'block';
-      document.getElementById('btn-copy').innerText = '📸 스캔';
+      actionBtn.style.display = 'flex';
+      document.getElementById('btn-copy').innerText = '📸 스캔 (터치)';
     }
 
     function seededRandom() {
@@ -279,18 +297,16 @@
     window.addEventListener('resize', renderMap);
 
     // ==========================================
-    // 🔍 뷰파인더 크기 조절 (드래그 수정 완료)
+    // 🔍 뷰파인더 크기 조절 (모바일 호환)
     // ==========================================
     let isResizing = false;
     function onResizeStart(e) {
       if (mode !== 'move') return;
       isResizing = true;
-      e.stopPropagation();
-      e.preventDefault();
+      e.stopPropagation(); e.preventDefault();
     }
     resizeHandle.addEventListener('mousedown', onResizeStart);
     resizeHandle.addEventListener('touchstart', onResizeStart, { passive: false });
-
     window.addEventListener('mouseup', () => { isResizing = false; });
     window.addEventListener('touchend', () => { isResizing = false; });
 
@@ -302,98 +318,61 @@
 
       pWidth = Math.round(Math.max(40, Math.min(300, (currentMouseX - pX) * 2)));
       pHeight = Math.round(Math.max(40, Math.min(300, (currentMouseY - pY) * 2)));
-
-      localPlayer.style.width = `${pWidth}px`;
-      localPlayer.style.height = `${pHeight}px`;
+      localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
     }
 
     window.addEventListener('mousemove', (e) => handleResizeMove(e.clientX, e.clientY));
     window.addEventListener('touchmove', (e) => {
-      if (isResizing) {
-        e.preventDefault();
-        handleResizeMove(e.touches[0].clientX, e.touches[0].clientY);
-      }
+      if (isResizing) { e.preventDefault(); handleResizeMove(e.touches[0].clientX, e.touches[0].clientY); }
     }, { passive: false });
 
     // ==========================================
-    // 🎨 낙서(Doodle) 시스템 - 회전 좌표 버그 & 커서 편의성 완벽 수정!
+    // 🎨 낙서 시스템 (회전 좌표계 완벽 적용)
     // ==========================================
-    let isDrawing = false;
-    let drawTool = 'pen';
-
+    let isDrawing = false; let drawTool = 'pen';
     window.setTool = (t) => {
       drawTool = t;
       document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen');
       document.getElementById('btn-eraser').classList.toggle('active-tool', t === 'eraser');
       doodleCtx.globalCompositeOperation = t === 'eraser' ? 'destination-out' : 'source-over';
-      
-      // 펜이면 십자선, 지우개면 굵은 네모(셀) 커서로 변경
-      doodleCanvas.style.cursor = t === 'eraser' ? 'cell' : 'crosshair';
+      doodleCanvas.style.cursor = t === 'eraser' ? 'cell' : 'crosshair'; // 툴에 따른 마우스 커서
     };
 
-    // 💡 회전된 상태에서도 마우스/터치 좌표를 정확히 캔버스에 매핑하는 마법의 수식
     function getDoodlePos(e) {
       const mapRect = mapContainer.getBoundingClientRect();
       const cX = (e.touches ? e.touches[0].clientX : e.clientX) - mapRect.left;
       const cY = (e.touches ? e.touches[0].clientY : e.clientY) - mapRect.top;
       
-      // 1. 화면상의 중심점(pX, pY)에서 마우스까지의 거리
-      const dx = cX - pX;
-      const dy = cY - pY;
-      
-      // 2. CSS로 회전된 각도를 다시 '역회전(-rotation)' 시켜서 원래 좌표 계산 (삼각함수)
+      const dx = cX - pX; const dy = cY - pY;
       const rad = -rotation * (Math.PI / 180);
       const rx = dx * Math.cos(rad) - dy * Math.sin(rad);
       const ry = dx * Math.sin(rad) + dy * Math.cos(rad);
       
-      // 3. 캔버스 내부 좌표(0,0은 좌상단이므로 중심값 더해주기)
       return { x: rx + (pWidth / 2), y: ry + (pHeight / 2) };
     }
 
-    doodleCanvas.addEventListener('mousedown', (e) => {
+    function startDraw(e) {
       if (mode !== 'edit') return;
-      isDrawing = true;
-      const p = getDoodlePos(e);
-      doodleCtx.beginPath();
-      doodleCtx.moveTo(p.x, p.y);
-      doodleCtx.lineWidth = 3;
-      doodleCtx.lineCap = 'round';
-      doodleCtx.strokeStyle = document.getElementById('doodle-color').value;
-    });
-
-    doodleCanvas.addEventListener('mousemove', (e) => {
+      isDrawing = true; const p = getDoodlePos(e);
+      doodleCtx.beginPath(); doodleCtx.moveTo(p.x, p.y); doodleCtx.lineWidth = 3;
+      doodleCtx.lineCap = 'round'; doodleCtx.strokeStyle = document.getElementById('doodle-color').value;
+    }
+    function draw(e) {
       if (!isDrawing || mode !== 'edit') return;
-      const p = getDoodlePos(e);
-      doodleCtx.lineTo(p.x, p.y);
-      doodleCtx.stroke();
-    });
-
+      if (e.touches) e.preventDefault(); // 모바일 스크롤 방지
+      const p = getDoodlePos(e); doodleCtx.lineTo(p.x, p.y); doodleCtx.stroke();
+    }
+    
+    doodleCanvas.addEventListener('mousedown', startDraw);
+    doodleCanvas.addEventListener('mousemove', draw);
     window.addEventListener('mouseup', () => { isDrawing = false; });
-
-    doodleCanvas.addEventListener('touchstart', (e) => {
-      if (mode !== 'edit') return;
-      isDrawing = true;
-      const p = getDoodlePos(e);
-      doodleCtx.beginPath();
-      doodleCtx.moveTo(p.x, p.y);
-      doodleCtx.lineWidth = 3;
-      doodleCtx.lineCap = 'round';
-      doodleCtx.strokeStyle = document.getElementById('doodle-color').value;
-    }, { passive: false });
-
-    doodleCanvas.addEventListener('touchmove', (e) => {
-      if (!isDrawing || mode !== 'edit') return;
-      e.preventDefault();
-      const p = getDoodlePos(e);
-      doodleCtx.lineTo(p.x, p.y);
-      doodleCtx.stroke();
-    }, { passive: false });
-
+    
+    doodleCanvas.addEventListener('touchstart', startDraw, { passive: false });
+    doodleCanvas.addEventListener('touchmove', draw, { passive: false });
     window.addEventListener('touchend', () => { isDrawing = false; });
 
-
     // ==========================================
-    // 📸 스캔 & 주차 시스템 (스페이스바 연동)
+    // 📸 스캔 & 주차 시스템
     // ==========================================
     window.addEventListener('keydown', e => { 
       keys[e.key.toLowerCase()] = true; 
@@ -404,6 +383,18 @@
       }
     });
     window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+    // 모바일 전용 액션 버튼 로직
+    if (isMobile) {
+      actionBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (mode === 'move') {
+          window.copyBackground();
+        } else if (mode === 'edit') {
+          window.finishHiding();
+        }
+      });
+    }
 
     window.copyBackground = () => {
       if (mode !== 'move') return;
@@ -431,12 +422,11 @@
       mode = 'edit';
       document.getElementById('ui-move').style.display = 'none';
       document.getElementById('ui-edit').style.display = 'flex';
+      if (isMobile) { actionBtn.innerText = '🤫'; actionBtn.style.background = '#e74c3c'; }
 
-      // 낙서 캔버스 초기화
       doodleCanvas.style.display = 'block';
-      doodleCanvas.width = pWidth;
-      doodleCanvas.height = pHeight;
-      doodleCtx.clearRect(0, 0, pWidth, pHeight);
+      doodleCanvas.width = sw; doodleCanvas.height = sh;
+      doodleCtx.scale(dpr, dpr);
     };
 
     window.toggleEye = () => { localFace.innerText = localFace.innerText === '👀' ? '' : '👀'; };
@@ -452,14 +442,14 @@
       if (userTaunt) tauntMessage = userTaunt;
 
       const mergedCanvas = document.createElement('canvas');
-      mergedCanvas.width = pWidth;
-      mergedCanvas.height = pHeight;
+      mergedCanvas.width = Math.round(pWidth * dpr);
+      mergedCanvas.height = Math.round(pHeight * dpr);
       const mCtx = mergedCanvas.getContext('2d');
 
       const bgImg = new Image();
       bgImg.src = localPlayer.style.backgroundImage.slice(5, -2);
       await new Promise(r => bgImg.onload = r);
-      mCtx.drawImage(bgImg, 0, 0, pWidth, pHeight);
+      mCtx.drawImage(bgImg, 0, 0, mergedCanvas.width, mergedCanvas.height);
       mCtx.drawImage(doodleCanvas, 0, 0); 
 
       const myData = {
@@ -490,7 +480,7 @@
       document.getElementById('ui-edit').style.display = 'none';
       document.getElementById('ui-share').style.display = 'flex';
       document.getElementById('room-status-text').innerText = `주차 완료! (현재 ${count}/9명)`;
-      if (isMobile) document.getElementById('joystick-zone').style.display = 'none';
+      if (isMobile) { document.getElementById('joystick-zone').style.display = 'none'; actionBtn.style.display = 'none'; }
     }
 
     window.copyLink = () => {
@@ -525,6 +515,7 @@
         document.getElementById('target-count').innerText = existingHiders.length;
         document.getElementById('ui-move').style.display = 'none';
         document.getElementById('ui-seek').style.display = 'flex';
+        if (isMobile) { document.getElementById('joystick-zone').style.display = 'none'; actionBtn.style.display = 'none'; }
 
         existingHiders.forEach((data, idx) => {
           const el = document.createElement('div');
@@ -542,7 +533,7 @@
           mapContainer.appendChild(el);
         });
 
-        timeLeft = 180;
+        // 타이머 시작 (180초)
         document.getElementById('time').innerText = timeLeft;
         timerInterval = setInterval(() => {
           timeLeft--;
@@ -624,31 +615,47 @@
     }
 
     // ==========================================
-    // 🕹️ 이동 로직 (스캔 후 'edit' 모드에서도 이동 가능!)
+    // 🕹️ 조이스틱 및 이동 로직 (모바일 반응형 완벽 패치)
     // ==========================================
     const joyZone = document.getElementById('joystick-zone');
     const joyKnob = document.getElementById('joystick-knob');
     let joyCenter = {x: 50, y: 50};
     
-    // 조이스틱도 edit 모드에서 이동 가능하도록 허용
-    joyZone.addEventListener('touchmove', (e) => {
+    function handleJoy(e) {
       if(mode !== 'move' && mode !== 'edit') return;
       e.preventDefault();
-      let touchX = e.touches[0].clientX - joyZone.getBoundingClientRect().left;
-      let touchY = e.touches[0].clientY - joyZone.getBoundingClientRect().top;
+      isJoystickActive = true;
+      const touch = e.targetTouches[0] || e.touches[0];
+      const rect = joyZone.getBoundingClientRect();
+      let touchX = touch.clientX - rect.left;
+      let touchY = touch.clientY - rect.top;
       let dx = touchX - joyCenter.x, dy = touchY - joyCenter.y;
       let dist = Math.sqrt(dx*dx + dy*dy);
       if(dist > 30) { dx *= 30/dist; dy *= 30/dist; }
       joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
       vX = (dx/30)*speed; vY = (dy/30)*speed;
-    });
-    joyZone.addEventListener('touchend', () => { vX=0; vY=0; joyKnob.style.transform = `translate(0,0)`; });
+    }
+    
+    function releaseJoy(e) {
+      if(e.touches.length === 0) {
+        isJoystickActive = false;
+        vX=0; vY=0; joyKnob.style.transform = `translate(0,0)`;
+      }
+    }
+
+    joyZone.addEventListener('touchstart', handleJoy, {passive: false});
+    joyZone.addEventListener('touchmove', handleJoy, {passive: false});
+    joyZone.addEventListener('touchend', releaseJoy);
+    joyZone.addEventListener('touchcancel', releaseJoy);
 
     function gameLoop() {
-      // 💡 여기서 mode === 'edit' 일 때도 캐릭터가 움직이도록 수정!!
       if (mode === 'move' || mode === 'edit') {
-        if (keys['w'] || keys['arrowup']) vY = -speed; else if (keys['s'] || keys['arrowdown']) vY = speed; else if (!isMobile) vY = 0;
-        if (keys['a'] || keys['arrowleft']) vX = -speed; else if (keys['d'] || keys['arrowright']) vX = speed; else if (!isMobile) vX = 0;
+        // 키보드 조작 (조이스틱을 안 쓸 때만)
+        if (!isJoystickActive) {
+          vY = 0; vX = 0;
+          if (keys['w'] || keys['arrowup']) vY = -speed; else if (keys['s'] || keys['arrowdown']) vY = speed;
+          if (keys['a'] || keys['arrowleft']) vX = -speed; else if (keys['d'] || keys['arrowright']) vX = speed;
+        }
 
         pX = Math.round(Math.max(pWidth/2, Math.min(mapContainer.clientWidth - pWidth/2, pX + vX)));
         pY = Math.round(Math.max(pHeight/2, Math.min(mapContainer.clientHeight - pHeight/2, pY + vY)));
