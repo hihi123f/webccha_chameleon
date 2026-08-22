@@ -1613,17 +1613,31 @@
         return; 
       }
 
+      // 2. 그냥 홈페이지에 접속한 경우
       if (db) {
         db.ref('rooms').on('value', snap => {
           const rooms = snap.val() || {};
           const listBox = document.getElementById('public-room-list');
           listBox.innerHTML = "";
           let hasRoom = false;
+          const now = Date.now();
 
           for (const [roomId, data] of Object.entries(rooms)) {
+            // 💡 [대청소 로직] 생성 시간이 없거나(옛날 찌꺼기 방), 만든 지 1시간(3600000ms) 지났으면 DB에서 완전 삭제!
+            if (!data.createdAt || (now - data.createdAt > 3600000)) {
+              db.ref('rooms/' + roomId).remove(); 
+              continue; // 화면에 안 그림
+            }
+
             if (data.status === 'waiting') {
               hasRoom = true;
-              const currentPlayers = data.list ? Object.keys(data.list).length : 0;
+              
+              // 💡 참여 인원 수 안전하게 계산
+              let currentPlayers = 0;
+              if (data.list) {
+                currentPlayers = Array.isArray(data.list) ? data.list.filter(x => x).length : Object.keys(data.list).length;
+              }
+
               const item = document.createElement('div');
               item.className = 'room-item';
               item.innerHTML = `
@@ -1636,7 +1650,6 @@
           if (!hasRoom) listBox.innerHTML = '<div style="text-align:center; color:#777; margin-top:50px;">현재 대기 중인 방이 없습니다.</div>';
         });
       }
-    }
 
     window.currentRound = window.currentRound || 1;
 
@@ -1651,12 +1664,17 @@
       window.currentRound = 1; 
       
       if (db) {
-        db.ref('rooms/' + currentRoomId).set({
+        const roomRef = db.ref('rooms/' + currentRoomId);
+        roomRef.set({
           hostName: myUid,
           status: 'waiting',
           mapIndex: currentMapIndex,
-          round: 1 
+          round: 1,
+          createdAt: Date.now() // 💡 방 생성 시간을 기록해둠
         });
+        
+        // 💡 [핵심 마법] 방장이 브라우저 창을 닫거나 새로고침하면, 파이어베이스가 알아서 방을 삭제함!
+        roomRef.onDisconnect().remove();
       }
 
       enterMoveMode();
