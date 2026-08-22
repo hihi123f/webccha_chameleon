@@ -1133,11 +1133,28 @@ function showGameAlert(msg, callback = null, duration = 2500) {
       });
     };
 
-    window.startPartySeek = () => {
-      if (db) db.ref('rooms/' + currentRoomId + '/status').set('seek');
-      isIntentional = true;
-      location.href = `${location.origin}${location.pathname}?room=${currentRoomId}&mode=seek`;
-    };
+    // 💡 [추가] 새로고침 없이 화면을 술래 모드로 싹 바꿔주는 마법의 함수
+window.transitionToSeekMode = () => {
+  // 1. 숨기 모드에서 쓰던 UI들 전부 숨기기
+  document.getElementById('ui-move').style.display = 'none';
+  document.getElementById('ui-edit').style.display = 'none';
+  document.getElementById('ui-share').style.display = 'none';
+  document.getElementById('local-player').style.display = 'none';
+  
+  // 2. 술래 모드 세팅 함수 바로 실행
+  initSeeker(currentRoomId);
+};
+
+    // [바꿀 코드]
+window.startPartySeek = () => {
+  if (db) {
+    db.ref('rooms/' + currentRoomId + '/status').set('seek');
+    // DB 값만 바꾸면 아래의 리스너가 감지해서 자동으로 넘어갑니다.
+  } else {
+    // 오프라인 모드일 때만 직접 전환
+    window.transitionToSeekMode();
+  }
+};
 
     // ==========================================
     // 🕵️ 술래 모드 및 게임 결과
@@ -1512,15 +1529,14 @@ function showGameAlert(msg, callback = null, duration = 2500) {
 
       if (roomData) {
         if (db) {
-          db.ref('rooms/' + id + '/status').on('value', snap => {
-            if (snap.val() === 'seek') {
-              // [바꿀 코드]
-showGameAlert("🚨 방장이 게임을 시작했습니다!<br>모두 색출 작전에 투입됩니다!", () => {
-  isIntentional = true;
-  location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
-}, 3000); // 3초 뒤에 이동
-            }
-          });
+          // [바꿀 코드 - 중복 방지 조건 추가 및 함수 교체]
+db.ref('rooms/' + id + '/status').on('value', snap => {
+  if (snap.val() === 'seek' && mode !== 'seek') { // 💡 이미 술래 모드면 무시
+    showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
+      window.transitionToSeekMode(); // 💡 새로고침 없이 바로 전환!
+    }, 2000); 
+  }
+});
         }
 
         currentMapIndex = roomData.mapIndex;
@@ -1547,15 +1563,11 @@ showGameAlert("🚨 방장이 게임을 시작했습니다!<br>모두 색출 작
           return; 
         }
         
-        if (existingHiders.length >= 9) {
-          showGameAlert("🔥 방이 꽉 찼습니다! (최대 9명)<br>곧 술래 모드로 자동 시작됩니다.", () => {
-  isIntentional = true;
-  location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
-}, 2000);
-          if (db) db.ref('rooms/' + id + '/status').set('seek');
-          
-          return;
-        }
+        // [바꿀 코드 - DB 상태만 'seek'로 바꾸면 위 3-1에서 알아서 팝업 띄우고 전환됨]
+if (existingHiders.length >= 9) {
+  if (db) db.ref('rooms/' + id + '/status').set('seek');
+  return;
+}
 
         mode = 'move';
         pWidth = 120; pHeight = 60;
