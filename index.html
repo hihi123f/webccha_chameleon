@@ -31,6 +31,7 @@
       0% { transform: scale(0.5); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
+    
     /* 💡 위장 모양 (Shape) 클래스 */
     .shape-rect { border-radius: 0; clip-path: none; }
     .shape-circle { border-radius: 50%; }
@@ -62,14 +63,8 @@
       box-sizing: border-box; 
       outline: none;
     }
-    button { 
-      cursor: pointer; 
-      box-shadow: 0 4px 0 rgba(0,0,0,0.3); 
-    }
-    button:active { 
-      transform: translateY(4px); 
-      box-shadow: 0 0 0 rgba(0,0,0,0.3); 
-    }
+    button { cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
+    button:active { transform: translateY(4px); box-shadow: 0 0 0 rgba(0,0,0,0.3); }
     
     .btn-main { background: #3498db; color: white; }
     .btn-action { background: #e74c3c; color: white; }
@@ -83,11 +78,7 @@
 
     #scroll-wrapper { flex-grow: 1; position: relative; overflow-y: auto; overflow-x: auto; width: 100%; background: #fff; }
     
-    #map-container { position: relative; 
-      width: 1000px; 
-      height: 5000px; 
-      cursor: crosshair; 
-    }
+    #map-container { position: relative; width: 1000px; height: 5000px; cursor: crosshair; }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
     .player-obj { position: absolute; transform: translate(-50%, -50%); z-index: 5; box-sizing: border-box; display: flex; justify-content: center; align-items: center; background-size: 100% 100%; background-repeat: no-repeat; pointer-events: none; }
@@ -104,12 +95,12 @@
     .walking { animation: waddle 0.25s infinite alternate; }
     @keyframes waddle { 0% { margin-left: -2px; } 100% { margin-left: 2px; } }
 
-    /* [기존 애니메이션 통째로 지우고 아래 코드로 교체] */
-.breathing { box-shadow: none !important; animation: breath 3s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
-@keyframes breath { 
-  0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); opacity: 1; } 
-  50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)) scale(1.01); opacity: 0.95; } 
-}
+    /* 💡 [수정] 숨결(Breathing) 덜 티나게 변경 */
+    .breathing { box-shadow: none !important; animation: breath 3s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
+    @keyframes breath { 
+      0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); opacity: 1; } 
+      50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)) scale(1.01); opacity: 0.95; } 
+    }
 
     .jelly-busted { position: absolute; font-size: 45px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
     @keyframes popOut { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
@@ -205,7 +196,6 @@
     <div id="ui-move" class="ui-group" style="display:none;">
       <span style="font-size:12px; color:#aaa;" id="overlap-warning">좌측:조이스틱 | 우측:스크롤</span>
       
-      <!-- 💡 방장 전용: 맵 업로드 버튼 -->
       <input type="file" id="map-upload" accept="image/*" style="display:none;" onchange="window.loadCustomMap(event)">
       <button class="btn-sub" id="btn-upload-map" onclick="document.getElementById('map-upload').click()" style="display:none;">🖼️ 사진으로 맵 변경</button>
 
@@ -290,7 +280,6 @@
       const overlay = document.getElementById('game-alert-overlay');
       document.getElementById('game-alert-message').innerHTML = msg;
       overlay.style.display = 'flex';
-      
       setTimeout(() => {
         overlay.style.display = 'none';
         if (callback) callback(); 
@@ -414,8 +403,10 @@
 
       activeTargets.forEach(t => {
         if (t.caught) return;
-        const breathScale = 1 + Math.sin(now / 600) * 0.01; 
-        const breathY = Math.sin(now / 600) * 1;
+
+        // 💡 미세한 숨결 애니메이션
+        const breathScale = 1 + Math.sin(now / 600) * 0.005; 
+        const breathY = Math.sin(now / 600) * 0.5;
 
         seekCtx.save();
         seekCtx.translate(t.pX * dpr, (t.pY + breathY) * dpr);
@@ -478,12 +469,10 @@
         bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
         bgCtx.fillStyle = '#03c75a'; bgCtx.fillRect(0, 0, w, 50);
         bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 20px sans-serif'; bgCtx.fillText('NAVER 블로그', 15, 33);
-        
         let cy = 100;
         bgCtx.fillStyle = '#222'; bgCtx.font = 'bold 28px sans-serif'; bgCtx.fillText('웹챠 카멜레온 9인 합방 후기', 20, cy); cy += 40;
         bgCtx.beginPath(); bgCtx.arc(35, cy+10, 20, 0, Math.PI*2); bgCtx.fillStyle = '#ddd'; bgCtx.fill();
         bgCtx.fillStyle = '#555'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('게임마스터 • 2026. 8. 22.', 65, cy+15); cy += 60;
-
         const texts = ["안녕하세요! 오늘은 화제의 게임 웹챠 카멜레온을 해봤습니다.", "처음엔 단순한 줄 알았는데, 심리전이 장난 아니네요.", "텍스트 사이에 교묘하게 숨는 유저들을 보면 감탄이 나옵니다.", "하이퍼링크 사이에 숨으면 진짜 눈 부릅뜨고 찾아야 해요.", "스크린샷을 보시면 아시겠지만 보호색이 핵심입니다.", "친구들과 9인팟으로 꼭 해보시길 강력 추천합니다!"];
         for(let i=0; i<60; i++) {
           bgCtx.fillStyle = '#f1f2f6'; bgCtx.fillRect(20, cy, w-40, 200); 
@@ -1105,21 +1094,29 @@
       };
     };
 
-     // 💡 [수정] 방 전체 데이터를 덮어씌우지 않고, 안전하게 내 위장 정보만 리스트에 '추가(push)' 합니다.
-async function saveData(myData) {
-  localStorage.setItem('hidden_' + currentRoomId, 'true');
+    // 💡 [수정] 방 전체 데이터를 덮어씌우지 않고, 안전하게 내 위장 정보만 리스트에 '추가(push)' 합니다.
+    async function saveData(myData) {
+      localStorage.setItem('hidden_' + currentRoomId, 'true');
 
-  if (db) {
-    // roomRef.set()을 쓰면 남의 레디 상태나 시작 신호가 날아가므로, list에 push만 합니다!
-    await db.ref('rooms/' + currentRoomId + '/list').push(myData);
-    showShareScreen();
-  } else {
-    let roomData = JSON.parse(localStorage.getItem('room_' + currentRoomId)) || { mapIndex: currentMapIndex, list: [] };
-    roomData.list.push(myData);
-    localStorage.setItem('room_' + currentRoomId, JSON.stringify(roomData));
-    showShareScreen();
-  }
-}
+      if (db) {
+        let safeList = [];
+        const snap = await db.ref('rooms/' + currentRoomId + '/list').once('value');
+        if (snap.exists()) {
+           const data = snap.val();
+           safeList = Array.isArray(data) ? data : Object.values(data);
+        }
+        safeList = safeList.filter(item => item !== null);
+        safeList.push(myData);
+
+        await db.ref('rooms/' + currentRoomId + '/list').set(safeList);
+        showShareScreen();
+      } else {
+        let roomData = JSON.parse(localStorage.getItem('room_' + currentRoomId)) || { mapIndex: currentMapIndex, list: [] };
+        roomData.list.push(myData);
+        localStorage.setItem('room_' + currentRoomId, JSON.stringify(roomData));
+        showShareScreen();
+      }
+    }
 
     let isReady = false;
     let readyCountdown = null;
@@ -1147,40 +1144,36 @@ async function saveData(myData) {
       }
     };
 
-    // 💡 [수정] 리스너가 여러 번 겹치지 않게 끄고(.off), 인원수도 정확히 셉니다.
-function showShareScreen(count = 0) {
-  mode = 'share';
-  document.getElementById('ui-edit').style.display = 'none';
-  document.getElementById('ui-share').style.display = 'flex';
-  if (isMobile) { actionBtn.style.display = 'none'; }
+    function showShareScreen(count = 0) {
+      mode = 'share';
+      document.getElementById('ui-edit').style.display = 'none';
+      document.getElementById('ui-share').style.display = 'flex';
+      if (isMobile) { actionBtn.style.display = 'none'; }
 
-  document.getElementById('btn-start-seek').style.display = 'inline-block';
+      document.getElementById('btn-start-seek').style.display = 'inline-block';
 
-  if (db) {
-    // 리스트 감지기 (중복 방지 off 추가)
-    db.ref('rooms/' + currentRoomId + '/list').off('value');
-    db.ref('rooms/' + currentRoomId + '/list').on('value', snap => {
-      let listData = snap.val();
-      if (listData) {
-        // 배열이든 오브젝트든 안전하게 인원수 계산
-        _totalHidden = Array.isArray(listData) ? listData.filter(x => x).length : Object.keys(listData).length;
+      if (db) {
+        db.ref('rooms/' + currentRoomId + '/list').off('value');
+        db.ref('rooms/' + currentRoomId + '/list').on('value', snap => {
+          let listData = snap.val();
+          if (listData) {
+            _totalHidden = Array.isArray(listData) ? listData.filter(x => x).length : Object.keys(listData).length;
+          } else {
+            _totalHidden = 0;
+          }
+          updateReadyState();
+        });
+        
+        db.ref('rooms/' + currentRoomId + '/ready').off('value');
+        db.ref('rooms/' + currentRoomId + '/ready').on('value', snap => {
+          let readyData = snap.val();
+          _readyCount = readyData ? Object.keys(readyData).length : 0;
+          updateReadyState();
+        });
       } else {
-        _totalHidden = 0;
+        document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (오프라인 모드)`;
       }
-      updateReadyState();
-    });
-    
-    // 레디 감지기 (중복 방지 off 추가)
-    db.ref('rooms/' + currentRoomId + '/ready').off('value');
-    db.ref('rooms/' + currentRoomId + '/ready').on('value', snap => {
-      let readyData = snap.val();
-      _readyCount = readyData ? Object.keys(readyData).length : 0;
-      updateReadyState();
-    });
-  } else {
-    document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (오프라인 모드)`;
-  }
-}
+    }
 
     function updateReadyState() {
       const statusText = document.getElementById('room-status-text');
@@ -1268,7 +1261,6 @@ function showShareScreen(count = 0) {
 
         existingHiders = roomData.list || [];
         
-        // 💡 [수정] 살아있는 타겟 수 계산 (null 찌꺼기 제외)
         let validHidersCount = 0;
         Object.values(existingHiders).forEach(h => { if(h && h.pX !== undefined) validHidersCount++; });
         document.getElementById('target-count').innerText = validHidersCount;
@@ -1281,7 +1273,6 @@ function showShareScreen(count = 0) {
         seekCanvas.height = MAP_HEIGHT * dpr;
         seekCanvas.style.display = 'block';
 
-        // 💡 [수정] activeTargets 안전하게 장전 (dbKey 부여, null 무시)
         activeTargets = [];
         Object.entries(existingHiders).forEach(([key, data]) => {
           if (data && data.pX !== undefined) {
@@ -1309,7 +1300,6 @@ function showShareScreen(count = 0) {
           db.ref('rooms/' + id + '/caught').on('child_added', snap => {
             const caughtDbKey = snap.key;
             
-            // 💡 [수정] 순서(idx)가 아니라 파이어베이스 고유번호(dbKey)로 잡힌 타겟 찾기!
             const hitTarget = activeTargets.find(t => t.dbKey === caughtDbKey);
             
             if (hitTarget && !hitTarget.caught) {
@@ -1465,9 +1455,9 @@ function showShareScreen(count = 0) {
         
         let myHiderIdx = -1;
         if(existingHiders && Array.isArray(existingHiders)){
-            myHiderIdx = existingHiders.findIndex(h => h.uid === myUid);
+            myHiderIdx = existingHiders.findIndex(h => h && h.uid === myUid);
         } else if (existingHiders && typeof existingHiders === 'object') {
-            myHiderIdx = Object.values(existingHiders).findIndex(h => h.uid === myUid);
+            myHiderIdx = Object.values(existingHiders).findIndex(h => h && h.uid === myUid);
         }
 
         if (myHiderIdx !== -1 && !caughtData[myHiderIdx]) {
@@ -1613,7 +1603,6 @@ function showShareScreen(count = 0) {
         return; 
       }
 
-      // 2. 그냥 홈페이지에 접속한 경우
       if (db) {
         db.ref('rooms').on('value', snap => {
           const rooms = snap.val() || {};
@@ -1623,16 +1612,14 @@ function showShareScreen(count = 0) {
           const now = Date.now();
 
           for (const [roomId, data] of Object.entries(rooms)) {
-            // 💡 [대청소 로직] 생성 시간이 없거나(옛날 찌꺼기 방), 만든 지 1시간(3600000ms) 지났으면 DB에서 완전 삭제!
             if (!data.createdAt || (now - data.createdAt > 3600000)) {
               db.ref('rooms/' + roomId).remove(); 
-              continue; // 화면에 안 그림
+              continue; 
             }
 
             if (data.status === 'waiting') {
               hasRoom = true;
               
-              // 💡 참여 인원 수 안전하게 계산
               let currentPlayers = 0;
               if (data.list) {
                 currentPlayers = Array.isArray(data.list) ? data.list.filter(x => x).length : Object.keys(data.list).length;
@@ -1650,6 +1637,7 @@ function showShareScreen(count = 0) {
           if (!hasRoom) listBox.innerHTML = '<div style="text-align:center; color:#777; margin-top:50px;">현재 대기 중인 방이 없습니다.</div>';
         });
       }
+    }
 
     window.currentRound = window.currentRound || 1;
 
@@ -1670,10 +1658,9 @@ function showShareScreen(count = 0) {
           status: 'waiting',
           mapIndex: currentMapIndex,
           round: 1,
-          createdAt: Date.now() // 💡 방 생성 시간을 기록해둠
+          createdAt: Date.now() 
         });
         
-        // 💡 [핵심 마법] 방장이 브라우저 창을 닫거나 새로고침하면, 파이어베이스가 알아서 방을 삭제함!
         roomRef.onDisconnect().remove();
       }
 
@@ -1681,24 +1668,23 @@ function showShareScreen(count = 0) {
     };
 
     window.joinRoom = (roomId) => {
-  const nick = document.getElementById('nickname-input').value.trim();
-  if (!nick) return showGameAlert("닉네임을 입력해주세요!");
-  myUid = nick;
-  
-  currentRoomId = roomId;
-  
-  // 💡 입장하는 방의 현재 라운드를 파악하여 싱크로율 맞춤
-  if (db) {
-    db.ref('rooms/' + roomId).once('value').then(snap => {
-      const data = snap.val();
-      window.currentRound = data ? (data.round || 1) : 1;
-      enterMoveMode();
-    });
-  } else {
-    window.currentRound = 1;
-    enterMoveMode();
-  }
-};
+      const nick = document.getElementById('nickname-input').value.trim();
+      if (!nick) return showGameAlert("닉네임을 입력해주세요!");
+      myUid = nick;
+      
+      currentRoomId = roomId;
+      
+      if (db) {
+        db.ref('rooms/' + roomId).once('value').then(snap => {
+          const data = snap.val();
+          window.currentRound = data ? (data.round || 1) : 1;
+          enterMoveMode();
+        });
+      } else {
+        window.currentRound = 1;
+        enterMoveMode();
+      }
+    };
 
     function enterMoveMode() {
       if (typeof listenForRoundChange === 'function') listenForRoundChange();
@@ -1868,3 +1854,4 @@ function showShareScreen(count = 0) {
   </script>
 </body>
 </html>
+이거맞냐
