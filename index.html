@@ -179,22 +179,24 @@ button:active {
 </head>
 <body>
   <!-- 💡 커스텀 게임 알림창 -->
-<div id="game-alert-overlay">
-  <!-- 💡 v2.0 로비 화면 -->
-<div id="lobby-overlay">
-  <div class="lobby-box">
-    <h1 class="lobby-title">🦎 웹챠 카멜레온</h1>
-    <input type="text" id="nickname-input" placeholder="사용할 닉네임 입력 (최대 6자)" maxlength="6">
-    
-    <div class="room-list-box" id="public-room-list">
-      <div style="text-align:center; color:#777; margin-top:50px;">현재 대기 중인 방이 없습니다.</div>
-    </div>
-
-    <button class="btn-main" style="width: 100%; font-size: 18px; padding: 12px;" onclick="window.createRoom()">+ 새로운 방 만들기</button>
+  <div id="game-alert-overlay">
+    <div class="game-alert-box" id="game-alert-message">알림 메시지</div>
   </div>
-</div>
-  <div class="game-alert-box" id="game-alert-message">알림 메시지</div>
-</div>
+
+  <!-- 💡 v2.0 로비 화면 (알림창 밖으로 무사히 탈출!) -->
+  <div id="lobby-overlay">
+    <div class="lobby-box">
+      <h1 class="lobby-title">🦎 웹챠 카멜레온</h1>
+      <input type="text" id="nickname-input" placeholder="사용할 닉네임 입력 (최대 6자)" maxlength="6">
+      
+      <div class="room-list-box" id="public-room-list">
+        <div style="text-align:center; color:#777; margin-top:50px;">현재 대기 중인 방이 없습니다.</div>
+      </div>
+
+      <button class="btn-main" style="width: 100%; font-size: 18px; padding: 12px;" onclick="window.createRoom()">+ 새로운 방 만들기</button>
+    </div>
+  </div>
+
   <!-- 💡 실시간 킬로그가 뜰 상자 -->
   <div id="kill-log-box"></div> 
 
@@ -390,7 +392,6 @@ function showGameAlert(msg, callback = null, duration = 2500) {
     let existingHiders = [];
     let tauntMessage = "";
     
-    // 내 고유 식별자(UID) 발급 (익명_abc 형태)
     let myUid = "";
     let customMapBase64 = null;
     
@@ -1443,7 +1444,7 @@ mapContainer.addEventListener('click', (e) => {
           }
 
           db.ref('rooms/' + currentRoomId + '/killLogs').push({
-            catcher: `익명_${myUid}` 
+            catcher: myUid 
           });
         } else {
           showFloatingText(e.clientX, e.clientY, `앗! 남이 먼저 낚아챔`, '#e67e22');
@@ -1492,7 +1493,7 @@ mapContainer.addEventListener('click', (e) => {
         }
 
         await db.ref('rooms/' + currentRoomId + '/results/' + myUid).set({
-          uid: `익명_${myUid}`,
+          uid: myUid,
           score: myScore,
           survived: survived,
           isHider: (myHiderIdx !== -1) 
@@ -1518,7 +1519,7 @@ mapContainer.addEventListener('click', (e) => {
           
           let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '🔹'));
           let surviveTag = r.survived ? ' <span style="color:#2ecc71; font-size:12px;">[생존]</span>' : (r.isHider ? ' <span style="color:#e74c3c; font-size:12px;">[검거됨]</span>' : '');
-          let meTag = (r.uid === `익명_${myUid}`) ? ' <span style="color:#f1c40f;">(나)</span>' : '';
+          let meTag = (r.uid === myUid`) ? ' <span style="color:#f1c40f;">(나)</span>' : '';
 
           rankItem.innerHTML = `<span>${medal} ${r.uid}${meTag}${surviveTag}</span> <span style="color:#3498db;">${r.score}점</span>`;
           box.appendChild(rankItem);
