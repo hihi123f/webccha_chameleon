@@ -147,11 +147,52 @@ button:active {
     #leaderboard-box { background: #222; padding: 15px; border-radius: 8px; margin-bottom: 15px; color: white; text-align: left; max-height: 200px; overflow-y: auto; width: 100%; box-sizing: border-box; }
     .rank-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #444; font-size: 15px; font-weight: bold; }
     .rank-item:last-child { border-bottom: none; }
+
+    /* 💡 v2.0 로비 UI 스타일 */
+#lobby-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: #111 url('https://www.transparenttextures.com/patterns/stardust.png');
+  z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.lobby-box {
+  background: #222; padding: 30px; border-radius: 15px; border: 4px solid #3498db;
+  text-align: center; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+}
+.lobby-title { color: #3498db; font-size: 32px; margin: 0 0 20px 0; text-shadow: 2px 2px 0 #000; }
+#nickname-input {
+  width: 100%; padding: 12px; font-size: 18px; text-align: center;
+  border-radius: 8px; border: 2px solid #555; margin-bottom: 20px; background: #333; color: white;
+}
+.room-list-box {
+  background: #1a1a1a; border-radius: 8px; height: 150px; overflow-y: auto;
+  margin-bottom: 20px; padding: 10px; text-align: left;
+}
+.room-item {
+  display: flex; justify-content: space-between; padding: 10px;
+  background: #333; border-radius: 6px; margin-bottom: 8px; font-size: 15px; color: white;
+}
+.room-item button { padding: 4px 10px; font-size: 13px; background: #2ecc71; }
+
+
+    
   </style>
 </head>
 <body>
   <!-- 💡 커스텀 게임 알림창 -->
 <div id="game-alert-overlay">
+  <!-- 💡 v2.0 로비 화면 -->
+<div id="lobby-overlay">
+  <div class="lobby-box">
+    <h1 class="lobby-title">🦎 웹챠 카멜레온</h1>
+    <input type="text" id="nickname-input" placeholder="사용할 닉네임 입력 (최대 6자)" maxlength="6">
+    
+    <div class="room-list-box" id="public-room-list">
+      <div style="text-align:center; color:#777; margin-top:50px;">현재 대기 중인 방이 없습니다.</div>
+    </div>
+
+    <button class="btn-main" style="width: 100%; font-size: 18px; padding: 12px;" onclick="window.createRoom()">+ 새로운 방 만들기</button>
+  </div>
+</div>
   <div class="game-alert-box" id="game-alert-message">알림 메시지</div>
 </div>
   <!-- 💡 실시간 킬로그가 뜰 상자 -->
@@ -350,7 +391,7 @@ function showGameAlert(msg, callback = null, duration = 2500) {
     let tauntMessage = "";
     
     // 내 고유 식별자(UID) 발급 (익명_abc 형태)
-    const myUid = Math.random().toString(36).substr(2, 4);
+    let myUid = "";
     let customMapBase64 = null;
     
     let comboCount = 0;
@@ -1571,45 +1612,107 @@ mapContainer.addEventListener('click', (e) => {
       requestAnimationFrame(gameLoop);
     }
 
-    async function initSystem() {
-      const urlParams = new URLSearchParams(window.location.search);
-      currentRoomId = urlParams.get('room');
-      const isSeekMode = urlParams.get('mode') === 'seek';
+    // 💡 [v2.0 업데이트] 로비 및 방 생성 시스템
+async function initSystem() {
+  const urlParams = new URLSearchParams(window.location.search);
+  currentRoomId = urlParams.get('room');
+  const isSeekMode = urlParams.get('mode') === 'seek';
 
-      if (currentRoomId) {
-        if (isSeekMode) await initSeeker(currentRoomId);
-        else await initJoinHider(currentRoomId);
-      // [수정된 코드 - 중간에 💡긴급 패치 부분 추가]
-  } else {
-    currentRoomId = Math.random().toString(36).substr(2, 6);
-    localStorage.setItem('isHost_' + currentRoomId, 'true'); 
-    
-    // 💡 [긴급 패치] 방장도 게임 시작(seek) 신호를 감지하도록 추가!
-    if (db) {
-      db.ref('rooms/' + currentRoomId + '/status').on('value', snap => {
-        if (snap.val() === 'seek' && mode !== 'seek') {
-          showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
-            window.transitionToSeekMode();
-          }, 2000); 
+  // 1. 방 링크를 타고 바로 들어온 경우 (로비에서 닉네임만 입력받고 바로 입장)
+  if (currentRoomId) {
+    document.getElementById('public-room-list').style.display = 'none'; // 링크 접속자는 방 목록 숨김
+    document.querySelector('.lobby-box button').innerText = "이 방에 입장하기";
+    window.createRoom = async () => {
+      const nick = document.getElementById('nickname-input').value.trim();
+      if (!nick) return showGameAlert("닉네임을 입력해주세요!");
+      myUid = nick;
+      document.getElementById('lobby-overlay').style.display = 'none';
+      if (isSeekMode) await initSeeker(currentRoomId);
+      else await initJoinHider(currentRoomId);
+    };
+    return; // 아래 로비 리스트 로딩 무시
+  }
+
+  // 2. 그냥 홈페이지에 접속한 경우 (로비 화면 표시 & 방 목록 불러오기)
+  if (db) {
+    db.ref('rooms').on('value', snap => {
+      const rooms = snap.val() || {};
+      const listBox = document.getElementById('public-room-list');
+      listBox.innerHTML = "";
+      let hasRoom = false;
+
+      for (const [roomId, data] of Object.entries(rooms)) {
+        // 대기 중(waiting)인 방만 보여줌
+        if (data.status === 'waiting') {
+          hasRoom = true;
+          const currentPlayers = data.list ? data.list.length : 0;
+          const item = document.createElement('div');
+          item.className = 'room-item';
+          item.innerHTML = `
+            <span>🏠 ${data.hostName}님의 방 <span style="color:#f1c40f;">(${currentPlayers}/9)</span></span>
+            <button onclick="window.joinRoom('${roomId}')">입장</button>
+          `;
+          listBox.appendChild(item);
         }
-      });
-    }
-
-    currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
-    // ...
-        existingHiders = [];
-        mode = 'move'; renderMap();
-        pWidth = 120; pHeight = 60;
-        pX = Math.round(scrollWrapper.clientWidth / 2); pY = Math.round(scrollWrapper.clientHeight / 2); 
-        document.getElementById('ui-move').style.display = 'flex';
-        localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
-        
-        // 💡 방장이면 사진 업로드 버튼 보여주기
-        document.getElementById('btn-upload-map').style.display = 'inline-block';
-        
-        gameLoop();
       }
-    }
+      if (!hasRoom) listBox.innerHTML = '<div style="text-align:center; color:#777; margin-top:50px;">현재 대기 중인 방이 없습니다.</div>';
+    });
+  }
+}
+
+// 💡 방장이 새 방을 파는 함수
+window.createRoom = () => {
+  const nick = document.getElementById('nickname-input').value.trim();
+  if (!nick) return showGameAlert("닉네임을 입력해주세요!");
+  myUid = nick;
+
+  currentRoomId = Math.random().toString(36).substr(2, 6);
+  localStorage.setItem('isHost_' + currentRoomId, 'true'); 
+  currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
+  
+  if (db) {
+    // 💡 DB에 방 정보 등록 (상태: waiting)
+    db.ref('rooms/' + currentRoomId).set({
+      hostName: myUid,
+      status: 'waiting',
+      mapIndex: currentMapIndex
+    });
+  }
+
+  enterMoveMode();
+};
+
+// 💡 공개 로비에서 다른 방에 들어가는 함수
+window.joinRoom = (roomId) => {
+  const nick = document.getElementById('nickname-input').value.trim();
+  if (!nick) return showGameAlert("닉네임을 입력해주세요!");
+  myUid = nick;
+  
+  currentRoomId = roomId;
+  enterMoveMode();
+};
+
+// 💡 공통: 닉네임 설정 후 움직임 모드로 진입
+function enterMoveMode() {
+  document.getElementById('lobby-overlay').style.display = 'none';
+  existingHiders = [];
+  mode = 'move'; renderMap();
+  pWidth = 120; pHeight = 60;
+  pX = Math.round(scrollWrapper.clientWidth / 2); pY = Math.round(scrollWrapper.clientHeight / 2); 
+  document.getElementById('ui-move').style.display = 'flex';
+  localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
+  
+  if (localStorage.getItem('isHost_' + currentRoomId) === 'true') {
+    document.getElementById('btn-upload-map').style.display = 'inline-block';
+  }
+
+  // 만약 다른 사람 방에 들어간 거라면 맵과 기존 유저 정보 로딩
+  if (localStorage.getItem('isHost_' + currentRoomId) !== 'true') {
+     initJoinHider(currentRoomId); 
+  } else {
+     gameLoop(); // 방장이면 바로 루프 시작
+  }
+}
 
     async function initJoinHider(id) {
       let roomData = null;
