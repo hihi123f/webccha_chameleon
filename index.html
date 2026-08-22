@@ -1213,14 +1213,14 @@ window.transitionToSeekMode = () => {
   initSeeker(currentRoomId);
 };
 
-    // [바꿀 코드]
 window.startPartySeek = () => {
   if (db) {
     db.ref('rooms/' + currentRoomId + '/status').set('seek');
-    // DB 값만 바꾸면 아래의 리스너가 감지해서 자동으로 넘어갑니다.
   } else {
-    // 오프라인 모드일 때만 직접 전환
-    window.transitionToSeekMode();
+    // 오프라인 모드일 때는 알림 띄우고 직접 전환
+    showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
+      window.transitionToSeekMode();
+    }, 2000);
   }
 };
 
@@ -1579,11 +1579,24 @@ mapContainer.addEventListener('click', (e) => {
       if (currentRoomId) {
         if (isSeekMode) await initSeeker(currentRoomId);
         else await initJoinHider(currentRoomId);
-      } else {
-        currentRoomId = Math.random().toString(36).substr(2, 6);
-        localStorage.setItem('isHost_' + currentRoomId, 'true'); 
-        
-        currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
+      // [수정된 코드 - 중간에 💡긴급 패치 부분 추가]
+  } else {
+    currentRoomId = Math.random().toString(36).substr(2, 6);
+    localStorage.setItem('isHost_' + currentRoomId, 'true'); 
+    
+    // 💡 [긴급 패치] 방장도 게임 시작(seek) 신호를 감지하도록 추가!
+    if (db) {
+      db.ref('rooms/' + currentRoomId + '/status').on('value', snap => {
+        if (snap.val() === 'seek' && mode !== 'seek') {
+          showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
+            window.transitionToSeekMode();
+          }, 2000); 
+        }
+      });
+    }
+
+    currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
+    // ...
         existingHiders = [];
         mode = 'move'; renderMap();
         pWidth = 120; pHeight = 60;
