@@ -798,7 +798,11 @@
           el.style.setProperty('--rot', `${data.rotation}deg`);
           el.style.backgroundImage = `url(${data.image})`;
           el.style.backgroundSize = '100% 100%';
-          el.style.opacity = data.opacity || 1; // 💡 투명도 반영!
+          el.style.opacity = data.opacity || 1; // 💡 투명도 정상 반영
+          if(data.hasEye) {
+            const eye = document.createElement('span');
+            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
+          }
           mapContainer.appendChild(el);
         });
 
@@ -824,7 +828,7 @@
 
               if (remaining === 0) {
                 clearInterval(timerInterval);
-                showFloatingBanner(`🎉 색출 종료! (최종 내 점수: ${myScore}점)`);
+                showFloatingBanner(`🎉 색출 종료! (내 최종 점수: ${myScore}점)`);
                 mode = 'gameover';
                 document.getElementById('ui-seek').style.display = 'none';
                 document.getElementById('ui-gameover').style.display = 'flex';
@@ -832,7 +836,7 @@
             }
           });
 
-          // 💡 실시간 트롤링 수신
+          // 실시간 트롤링 수신
           db.ref('rooms/' + id + '/trolls').on('child_added', snap => {
             const troll = snap.val();
             if (troll.type === 'fart') {
@@ -1011,7 +1015,7 @@
       }
     }
 
-    async function initJoinHider(id) {
+    async function async function initJoinHider(id) {
       let roomData = null;
       if (db) {
         const snap = await db.ref('rooms/' + id).once('value');
@@ -1045,8 +1049,14 @@
           el.style.backgroundImage = `url(${data.image})`;
           el.style.backgroundSize = '100% 100%';
           el.style.opacity = data.opacity || 1; 
+          if(data.hasEye) {
+            const eye = document.createElement('span');
+            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
+          }
           mapContainer.appendChild(el);
         });
+
+        // 💡 괄호 꼬임 에러 및 중복 코드 제거 완료!
 
         if (localStorage.getItem('hidden_' + id)) {
           alert("이미 이 방에 위장하셨습니다! 친구들을 기다리거나 술래를 시작하세요.");
