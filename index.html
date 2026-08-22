@@ -1150,26 +1150,33 @@
       }
     };
 
+    let _totalPlayers = 1; // 💡 전체 접속 인원
+
     function showShareScreen(count = 0) {
       mode = 'share';
       document.getElementById('ui-edit').style.display = 'none';
       document.getElementById('ui-share').style.display = 'flex';
       if (isMobile) { actionBtn.style.display = 'none'; }
-
       document.getElementById('btn-start-seek').style.display = 'inline-block';
 
       if (db) {
+        // 1. 전체 접속 인원 감지
+        db.ref('rooms/' + currentRoomId + '/players').off('value');
+        db.ref('rooms/' + currentRoomId + '/players').on('value', snap => {
+          const p = snap.val();
+          _totalPlayers = p ? Object.keys(p).length : 1;
+          updateReadyState();
+        });
+
+        // 2. 주차(숨기) 완료 인원 감지
         db.ref('rooms/' + currentRoomId + '/list').off('value');
         db.ref('rooms/' + currentRoomId + '/list').on('value', snap => {
           let listData = snap.val();
-          if (listData) {
-            _totalHidden = Array.isArray(listData) ? listData.filter(x => x).length : Object.keys(listData).length;
-          } else {
-            _totalHidden = 0;
-          }
+          _totalHidden = listData ? (Array.isArray(listData) ? listData.filter(x=>x).length : Object.keys(listData).length) : 0;
           updateReadyState();
         });
         
+        // 3. 레디 인원 감지
         db.ref('rooms/' + currentRoomId + '/ready').off('value');
         db.ref('rooms/' + currentRoomId + '/ready').on('value', snap => {
           let readyData = snap.val();
@@ -1183,10 +1190,19 @@
 
     function updateReadyState() {
       const statusText = document.getElementById('room-status-text');
-      const majority = Math.max(1, Math.floor(_totalHidden / 2) + 1);
-      let baseText = `현재 ${_totalHidden}명 주차! (레디: ${_readyCount}/${majority}명)`;
+      const reqReady = Math.max(1, _totalPlayers); 
+
+      // 💡 아직 다 안 숨었다면 레디해도 타이머 시작 안 함!
+      if (_totalHidden < reqReady) {
+        statusText.innerText = `방 인원: ${reqReady}명 | 누군가 주차 중... (${_totalHidden}/${reqReady})`;
+        statusText.style.color = '#f39c12';
+        if (readyCountdown) { clearInterval(readyCountdown); readyCountdown = null; }
+        return;
+      }
+
+      let baseText = `모두 숨었습니다! 레디 대기 중 (${_readyCount}/${reqReady})`;
       
-      if (_readyCount >= majority) {
+      if (_readyCount >= reqReady) {
         if (!readyCountdown) {
           countdownValue = 5;
           playSound('shutter'); 
@@ -1198,19 +1214,14 @@
               statusText.innerText = `🚨 게임 시작!`;
               window.startPartySeek(); 
             } else {
-              statusText.innerText = `${baseText} ⏳ ${countdownValue}초 뒤 시작!`;
+              statusText.innerText = `🚨 ${countdownValue}초 뒤 시작!`;
             }
           }, 1000);
         }
-        if(countdownValue > 0) {
-          statusText.innerText = `${baseText} ⏳ ${countdownValue}초 뒤 시작!`;
-        }
+        if(countdownValue > 0) statusText.innerText = `🚨 ${countdownValue}초 뒤 시작!`;
         statusText.style.color = '#f1c40f'; 
       } else {
-        if (readyCountdown) {
-          clearInterval(readyCountdown);
-          readyCountdown = null;
-        }
+        if (readyCountdown) { clearInterval(readyCountdown); readyCountdown = null; }
         statusText.innerText = baseText;
         statusText.style.color = '#2ecc71'; 
       }
@@ -1249,7 +1260,14 @@
 
     async function initSeeker(id) {
       let roomData = null;
-      if (db) {
+      // [initSeeker 함수 중간 부분입니다. 찾아서 off 3줄을 꼭 넣어주세요!]
+        if (db) {
+          // 💡 [핵심 에러 해결] 이전 라운드의 수신기를 깨끗하게 끄고 시작합니다!!
+          db.ref('rooms/' + id + '/killLogs').off();
+          db.ref('rooms/' + id + '/caught').off();
+          db.ref('rooms/' + id + '/trolls').off();
+
+          db.ref('rooms/' + id + '/killLogs').on('child_added', snap => {
         const snap = await db.ref('rooms/' + id).once('value');
         if (snap.exists()) roomData = snap.val();
       } else {
@@ -1738,6 +1756,7 @@ mapContainer.addEventListener('click', (e) => {
     };
 
     // 💡 공통: 닉네임 설정 후 움직임 모드로 진입
+// 💡 공통: 닉네임 설정 후 움직임 모드로 진입
 function enterMoveMode() {
   if (typeof listenForRoundChange === 'function') listenForRoundChange();
 
@@ -1761,7 +1780,6 @@ function enterMoveMode() {
     document.getElementById('btn-upload-map').style.display = 'inline-block';
   }
 
-  // 💡 [버그 수정] 2라운드 진입 시 모바일 스캔 버튼 원상 복구!
   if (isMobile) {
     const mBtn = document.getElementById('mobile-action-btn');
     mBtn.style.display = 'flex';
@@ -1769,10 +1787,16 @@ function enterMoveMode() {
     mBtn.style.background = '#3498db';
   }
 
+  // 💡 [추가됨] 방에 접속한 인원을 DB에 실시간으로 등록!
+  if (db && myUid) {
+    const myPlayerRef = db.ref('rooms/' + currentRoomId + '/players/' + myUid);
+    myPlayerRef.set(true);
+    myPlayerRef.onDisconnect().remove(); // 나가면 자동으로 삭제
+  }
+
   if (localStorage.getItem('isHost_' + currentRoomId) !== 'true') {
      initJoinHider(currentRoomId); 
   } else {
-     // 💡 [긴급 패치] 방장 전용 '게임 시작' 감지기
      if (db) {
        db.ref('rooms/' + currentRoomId + '/status').off('value');
        db.ref('rooms/' + currentRoomId + '/status').on('value', snap => {
