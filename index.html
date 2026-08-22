@@ -226,10 +226,17 @@ button:active {
   </div>
 
   <div id="scroll-wrapper">
-    <div id="map-container">
-      <canvas id="bg-canvas"></canvas>
-      
-      <div id="local-player" class="player-obj">
+    <!-- [수정 전] -->
+<div id="map-container">
+  <canvas id="bg-canvas"></canvas>
+  <div id="local-player" class="player-obj">
+<!-- [수정 후] -->
+<div id="map-container">
+  <canvas id="bg-canvas"></canvas>
+  <!-- 💡 [추가] 술래 모드 전용 렌더링 캔버스 -->
+  <canvas id="seek-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 4; display: none; pointer-events: none;"></canvas>
+  
+  <div id="local-player" class="player-obj">
         <div id="crosshair">+</div>
         <span id="local-face" class="obj-face"></span>
         <canvas id="doodle-canvas"></canvas>
@@ -369,6 +376,67 @@ function showGameAlert(msg, callback = null, duration = 2500) {
     const localFace = document.getElementById('local-face');
     const doodleCanvas = document.getElementById('doodle-canvas');
     const doodleCtx = doodleCanvas.getContext('2d');
+
+    // 💡 [추가] 3단계: 캔버스 렌더링 변수 및 숨결 루프 함수
+const seekCanvas = document.getElementById('seek-canvas');
+const seekCtx = seekCanvas.getContext('2d');
+let activeTargets = [];
+let seekLoopId = null;
+
+function seekLoop() {
+  if (mode !== 'seek') return;
+  seekCtx.clearRect(0, 0, seekCanvas.width, seekCanvas.height);
+  const now = Date.now();
+
+  activeTargets.forEach(t => {
+    if (t.caught) return;
+
+    // 숨결(Breathing) 애니메이션 수학적 계산 (sin 함수 이용)
+    const breathScale = 1 + Math.sin(now / 477) * 0.02;
+    const breathY = Math.sin(now / 477) * 2;
+
+    seekCtx.save();
+    // dpr을 곱해서 고해상도로 그림
+    seekCtx.translate(t.pX * dpr, (t.pY + breathY) * dpr);
+    seekCtx.rotate(t.rotation * Math.PI / 180);
+    seekCtx.scale(breathScale, breathScale);
+    seekCtx.globalAlpha = t.opacity || 1;
+
+    // 모양(Shape) 클리핑 적용
+    seekCtx.beginPath();
+    const hw = (t.pWidth * dpr) / 2;
+    const hh = (t.pHeight * dpr) / 2;
+    
+    if (t.shape === 'circle') {
+      seekCtx.arc(0, 0, Math.max(hw, hh), 0, Math.PI * 2);
+    } else if (t.shape === 'pill') {
+      seekCtx.roundRect(-hw, -hh, hw * 2, hh * 2, Math.min(hw, hh));
+    } else if (t.shape === 'rhombus') {
+      seekCtx.moveTo(0, -hh); seekCtx.lineTo(hw, 0);
+      seekCtx.lineTo(0, hh); seekCtx.lineTo(-hw, 0);
+    } else {
+      seekCtx.rect(-hw, -hh, hw * 2, hh * 2);
+    }
+    seekCtx.clip();
+
+    // 캡처한 이미지 그리기
+    if (t.img && t.img.complete) {
+      seekCtx.drawImage(t.img, -hw, -hh, hw * 2, hh * 2);
+    }
+
+    // 눈알(👀) 그리기
+    if (t.hasEye) {
+      seekCtx.font = `${22 * dpr}px sans-serif`;
+      seekCtx.textAlign = 'center';
+      seekCtx.textBaseline = 'middle';
+      seekCtx.fillText('👀', 0, 0);
+    }
+
+    seekCtx.restore();
+  });
+
+  seekLoopId = requestAnimationFrame(seekLoop);
+}
 
     const MAP_WIDTH = 1000; 
     const MAP_HEIGHT = 5000; 
@@ -1183,25 +1251,20 @@ window.startPartySeek = () => {
         document.getElementById('ui-seek').style.display = 'flex';
         if (isMobile) { actionBtn.style.display = 'none'; }
 
-        existingHiders.forEach((data, idx) => {
-          const el = document.createElement('div');
-          
-          const applyShape = data.shape ? data.shape : 'rect';
-          el.className = `player-obj copied breathing target-obj shape-${applyShape}`;
-          el.id = `target-${idx}`;
-          el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
-          el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
-          el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
-          el.style.setProperty('--rot', `${data.rotation}deg`);
-          el.style.backgroundImage = `url(${data.image})`;
-          el.style.backgroundSize = '100% 100%';
-          el.style.opacity = data.opacity || 1; 
-          if(data.hasEye) {
-            const eye = document.createElement('span');
-            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
-          }
-          mapContainer.appendChild(el);
-        });
+        seekCanvas.width = MAP_WIDTH * dpr;
+seekCanvas.height = MAP_HEIGHT * dpr;
+seekCanvas.style.display = 'block';
+
+// DOM 대신 자바스크립트 배열에 타겟 데이터 장전
+activeTargets = existingHiders.map((data, idx) => {
+  const img = new Image();
+  img.src = data.image; // 병합된 이미지 로드
+  return { ...data, idx: idx, img: img, caught: false };
+});
+
+// 숨결 렌더링 루프 시작
+if (seekLoopId) cancelAnimationFrame(seekLoopId);
+seekLoop();
 
         if (db) {
           // 💡 실시간 킬로그 수신
@@ -1217,30 +1280,28 @@ window.startPartySeek = () => {
           });
 
           db.ref('rooms/' + id + '/caught').on('child_added', snap => {
-            const idx = snap.key;
-            const hitTarget = document.getElementById(`target-${idx}`);
-            
-            if (hitTarget) {
-              const caughtData = existingHiders[idx];
-              hitTarget.remove(); 
-              
-              const jelly = document.createElement('div');
-              jelly.className = 'jelly-busted'; jelly.innerText = '😳💦';
-              jelly.style.left = `${caughtData.pX}px`; jelly.style.top = `${caughtData.pY}px`;
-              mapContainer.appendChild(jelly);
+  const idx = snap.key;
+  
+  if (activeTargets[idx] && !activeTargets[idx].caught) {
+    activeTargets[idx].caught = true; // 💡 캔버스에서 더 이상 안 그려짐
+    
+    const jelly = document.createElement('div');
+    jelly.className = 'jelly-busted'; jelly.innerText = '😳💦';
+    jelly.style.left = `${activeTargets[idx].pX}px`; jelly.style.top = `${activeTargets[idx].pY}px`;
+    mapContainer.appendChild(jelly);
 
-              mapContainer.classList.add('shake-screen');
-              setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+    mapContainer.classList.add('shake-screen');
+    setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
 
-              const remaining = document.querySelectorAll('.target-obj').length;
-              document.getElementById('target-count').innerText = remaining;
+    const remaining = activeTargets.filter(t => !t.caught).length;
+    document.getElementById('target-count').innerText = remaining;
 
-              if (remaining === 0) {
-                clearInterval(timerInterval);
-                triggerGameOver("🎉 모든 타겟 색출 완료!");
-              }
-            }
-          });
+    if (remaining === 0) {
+      clearInterval(timerInterval);
+      triggerGameOver("🎉 모든 타겟 색출 완료!");
+    }
+  }
+});
 
           db.ref('rooms/' + id + '/trolls').on('child_added', snap => {
             const troll = snap.val();
@@ -1270,85 +1331,105 @@ window.startPartySeek = () => {
       }
     }
 
-    mapContainer.addEventListener('click', (e) => {
-      if (mode !== 'seek') return;
-      const hitTarget = e.target.closest('.target-obj');
-      const now = Date.now();
+    // 기존 mapContainer.addEventListener('click', (e) => { ... }) 전체를 아래 코드로 통째로 교체하세요.
 
-      if (hitTarget) {
-        const idx = parseInt(hitTarget.id.split('-')[1]);
-        const caughtData = existingHiders[idx];
+mapContainer.addEventListener('click', (e) => {
+  if (mode !== 'seek') return;
+  const now = Date.now();
 
-        if (caughtData.uid === myUid) {
-          showFloatingText(e.clientX, e.clientY, `❌ 내 분신은 잡을 수 없음!`, '#e74c3c');
-          return;
-        }
-        
-        if (db) {
-          const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + idx);
-          catchRef.transaction((current) => {
-            if (current === null) return myUid; 
-            return; 
-          }, (error, committed) => {
-            if (committed) {
-              myScore += 100;
-              document.getElementById('my-score').innerText = myScore;
-              
-              if (now - lastCatchTime < 3000) comboCount++; else comboCount = 1;
-              lastCatchTime = now;
-              
-              const pitchMultiplier = 1 + (comboCount * 0.15); 
-              playSound('catch', pitchMultiplier); 
-              showFloatingText(e.clientX, e.clientY, `🎯 내가 잡음! (+100)`, '#2ecc71');
+  const rect = mapContainer.getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+  const clickY = e.clientY - rect.top;
 
-              if (comboCount >= 2) {
-                let text = "DOUBLE KILL!"; let color = "#f1c40f";
-                if (comboCount === 3) { text = "TRIPLE KILL!"; color = "#e67e22"; }
-                else if (comboCount >= 4) { text = "UNSTOPPABLE!!"; color = "#ff4757"; }
-                showFloatingCombo(e.clientX, e.clientY, text, color);
-              }
+  let hitTargetData = null;
+  let minDistToAny = Infinity;
 
-              db.ref('rooms/' + currentRoomId + '/killLogs').push({
-                catcher: `익명_${myUid}` 
-              });
+  // 가장 위에 그려진(나중에 숨은) 녀석부터 클릭되도록 역순 탐색
+  for (let i = activeTargets.length - 1; i >= 0; i--) {
+    const t = activeTargets[i];
+    if (t.caught) continue;
 
-            } else {
-              showFloatingText(e.clientX, e.clientY, `앗! 남이 먼저 낚아챔`, '#e67e22');
-            }
-          });
-        }
-      } else {
-        playSound('miss'); comboCount = 0; 
-        life--; document.getElementById('life').innerText = life;
-        mapContainer.classList.add('shake-screen');
-        setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+    // 힌트용 거리 계산 (가장 가까운 거리 찾기)
+    const dist = Math.hypot(clickX - t.pX, clickY - t.pY);
+    if (dist < minDistToAny) minDistToAny = dist;
 
-        if (life <= 0) { 
-          clearInterval(timerInterval); triggerGameOver("내 목숨 소진 ㅠㅠ"); 
-        } else { 
-          const rect = mapContainer.getBoundingClientRect();
-          const clickX = e.clientX - rect.left;
-          const clickY = e.clientY - rect.top;
+    // 💡 [수학 공식] 회전된 사각형 안에 마우스 좌표가 있는지 판정
+    const dx = clickX - t.pX;
+    const dy = clickY - t.pY;
+    const rad = t.rotation * Math.PI / 180;
+    
+    // 마우스 좌표를 타겟의 회전 각도만큼 반대로 회전시켜서 직사각형 안에 들어오는지 확인
+    const rx = dx * Math.cos(rad) + dy * Math.sin(rad);
+    const ry = -dx * Math.sin(rad) + dy * Math.cos(rad);
 
-          let minDist = Infinity;
-          document.querySelectorAll('.target-obj').forEach(el => {
-            const tx = parseFloat(el.style.left);
-            const ty = parseFloat(el.style.top);
-            const dist = Math.hypot(clickX - tx, clickY - ty);
-            if (dist < minDist) minDist = dist;
-          });
+    const hw = t.pWidth / 2;
+    const hh = t.pHeight / 2;
 
-          let hintMsg = "❌ 헛방!";
-          let hintColor = "#e74c3c";
-          if (minDist !== Infinity) {
-            if (minDist < 120) { hintMsg = `🔥 완전 뜨거움! (${Math.round(minDist)}px)`; hintColor = "#ff4757"; }
-            else if (minDist < 300) { hintMsg = `♨️ 따뜻함 (${Math.round(minDist)}px)`; hintColor = "#ffa502"; }
-            else { hintMsg = "❄️ 아주 멉니다"; hintColor = "#747d8c"; }
+    if (rx >= -hw && rx <= hw && ry >= -hh && ry <= hh) {
+      hitTargetData = t;
+      break; // 맞췄으면 더 이상 뒤지지 않음
+    }
+  }
+
+  if (hitTargetData) {
+    if (hitTargetData.uid === myUid) {
+      showFloatingText(e.clientX, e.clientY, `❌ 내 분신은 잡을 수 없음!`, '#e74c3c');
+      return;
+    }
+    
+    if (db) {
+      const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + hitTargetData.idx);
+      catchRef.transaction((current) => {
+        if (current === null) return myUid; 
+        return; 
+      }, (error, committed) => {
+        if (committed) {
+          myScore += 100;
+          document.getElementById('my-score').innerText = myScore;
+          
+          if (now - lastCatchTime < 3000) comboCount++; else comboCount = 1;
+          lastCatchTime = now;
+          
+          const pitchMultiplier = 1 + (comboCount * 0.15); 
+          playSound('catch', pitchMultiplier); 
+          showFloatingText(e.clientX, e.clientY, `🎯 내가 잡음! (+100)`, '#2ecc71');
+
+          if (comboCount >= 2) {
+            let text = "DOUBLE KILL!"; let color = "#f1c40f";
+            if (comboCount === 3) { text = "TRIPLE KILL!"; color = "#e67e22"; }
+            else if (comboCount >= 4) { text = "UNSTOPPABLE!!"; color = "#ff4757"; }
+            showFloatingCombo(e.clientX, e.clientY, text, color);
           }
-          showFloatingText(e.clientX, e.clientY, hintMsg, hintColor);
+
+          db.ref('rooms/' + currentRoomId + '/killLogs').push({
+            catcher: `익명_${myUid}` 
+          });
+        } else {
+          showFloatingText(e.clientX, e.clientY, `앗! 남이 먼저 낚아챔`, '#e67e22');
         }
+      });
+    }
+  } else {
+    // 헛방 로직
+    playSound('miss'); comboCount = 0; 
+    life--; document.getElementById('life').innerText = life;
+    mapContainer.classList.add('shake-screen');
+    setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+
+    if (life <= 0) { 
+      clearInterval(timerInterval); triggerGameOver("내 목숨 소진 ㅠㅠ"); 
+    } else { 
+      let hintMsg = "❌ 헛방!";
+      let hintColor = "#e74c3c";
+      if (minDistToAny !== Infinity) {
+        if (minDistToAny < 120) { hintMsg = `🔥 완전 뜨거움! (${Math.round(minDistToAny)}px)`; hintColor = "#ff4757"; }
+        else if (minDistToAny < 300) { hintMsg = `♨️ 따뜻함 (${Math.round(minDistToAny)}px)`; hintColor = "#ffa502"; }
+        else { hintMsg = "❄️ 아주 멉니다"; hintColor = "#747d8c"; }
       }
-    });
+      showFloatingText(e.clientX, e.clientY, hintMsg, hintColor);
+    }
+  }
+});
 
     async function triggerGameOver(reason) {
       mode = 'gameover';
@@ -1586,6 +1667,8 @@ if (existingHiders.length >= 9) {
 
     window.addEventListener('touchstart', initAudio, { once: true });
     window.addEventListener('click', initAudio, { once: true });
+    // 💡 모바일 꾹 누르기(우클릭 메뉴) 방지
+    window.addEventListener('contextmenu', e => e.preventDefault());
 
     initSystem();
   </script>
