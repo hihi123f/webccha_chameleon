@@ -17,7 +17,8 @@
       flex-shrink: 0; padding: 8px 12px; display: flex; gap: 15px; 
       flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; 
       align-items: center; background: #222; border-bottom: 3px solid #444; 
-      z-index: 50; box-sizing: border-box; 
+      z-index: 50; box-sizing: border-box;
+      width: 100%;
       scrollbar-width: none;
     }
     #ui::-webkit-scrollbar { display: none; }
@@ -730,8 +731,8 @@
       if (mode !== 'edit') return;
       playSound('pop'); 
 
-      const userTaunt = document.getElementById('taunt-input').value.trim();
-      if (userTaunt) tauntMessage = userTaunt;
+      const tauntInputEl = document.getElementById('taunt-input');
+      let tauntMessage = tauntInputEl ? tauntInputEl.value.trim() : "";
 
       const mergedCanvas = document.createElement('canvas');
       mergedCanvas.width = Math.round(pWidth * dpr);
@@ -744,10 +745,15 @@
         mCtx.drawImage(bgImg, 0, 0, mergedCanvas.width, mergedCanvas.height);
         mCtx.drawImage(doodleCanvas, 0, 0); 
 
+        const localFace = document.getElementById('local-face');
+        const eyeCheck = localFace ? (localFace.innerText === '👀') : false;
+
         const myData = {
           uid: myUid, 
           pX: pX, pY: pY, pWidth: pWidth, pHeight: pHeight, rotation: rotation,
-          hasEye: (localFace.innerText === '👀'),
+          opacity: opacitySlider.value,  // 💡 투명도 복구!
+          shape: currentShape,           // 💡 모양 복구!
+          hasEye: eyeCheck,
           image: mergedCanvas.toDataURL(),
           taunt: tauntMessage
         };
@@ -1060,6 +1066,7 @@
     });
 
     // 💡 [패치 2 & 4] 게임 종료 및 결과창 정산 로직
+    // 💡 게임 종료 및 결과창 정산 로직 복구
     async function triggerGameOver(reason) {
       mode = 'gameover';
       document.getElementById('ui-seek').style.display = 'none';
@@ -1257,8 +1264,22 @@
 
         currentMapIndex = roomData.mapIndex;
         existingHiders = roomData.list || [];
-        renderMap();
+        
+        // 💡 방장이면 사진 업로드 버튼 보여주기 복구!
+        if (localStorage.getItem('isHost_' + id) === 'true') {
+          document.getElementById('btn-upload-map').style.display = 'inline-block';
+        }
 
+        // 💡 커스텀 맵 렌더링 복구!
+        if (roomData.customMap) applyCustomMap(roomData.customMap);
+        else renderMap();
+
+        // 💡 실시간 커스텀 맵 동기화 복구!
+        if (db) {
+          db.ref('rooms/' + id + '/customMap').on('value', snap => {
+            if (snap.exists()) applyCustomMap(snap.val());
+          });
+        }
 
         if (localStorage.getItem('hidden_' + id)) {
           alert("이미 이 방에 위장하셨습니다! 친구들을 기다리거나 술래를 시작하세요.");
@@ -1267,8 +1288,10 @@
           return; 
         }
         
+        // 💡 9명 꽉 찼을 때 전원 동시 시작 버그 복구!
         if (existingHiders.length >= 9) {
           alert("방이 꽉 찼습니다! (최대 9명) 술래 모드로 자동 시작됩니다.");
+          if (db) db.ref('rooms/' + id + '/status').set('seek');
           location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
           return;
         }
