@@ -1105,8 +1105,7 @@
       };
     };
 
-    // 💡 [수정] DB 배열 깨짐으로 인한 2라운드 멈춤 및 UI 증발 완벽 해결
-async function saveData(myData) {
+    async function saveData(myData) {
   localStorage.setItem('hidden_' + currentRoomId, 'true');
 
   if (db) {
@@ -1114,13 +1113,15 @@ async function saveData(myData) {
     const snap = await roomRef.once('value');
     let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
     
-    // 배열이 꼬였을 때를 대비한 안전 장치 추가
-    let currentList = [];
+    // 💡 DB 에러(배열 깨짐) 방지 장치
+    let safeList = [];
     if (roomData.list) {
-      currentList = Array.isArray(roomData.list) ? roomData.list : Object.values(roomData.list);
+      safeList = Array.isArray(roomData.list) ? roomData.list : Object.values(roomData.list);
     }
-    currentList.push(myData);
-    roomData.list = currentList;
+    // null 값 제거 후 내 데이터 추가
+    safeList = safeList.filter(item => item !== null);
+    safeList.push(myData);
+    roomData.list = safeList;
     
     await roomRef.set(roomData);
     showShareScreen(roomData.list.length);
@@ -1266,7 +1267,12 @@ async function saveData(myData) {
         localPlayer.style.display = 'none';
 
         existingHiders = roomData.list || [];
-        document.getElementById('target-count').innerText = Object.keys(existingHiders).length;
+        
+        // 💡 [수정] 살아있는 타겟 수 계산 (null 찌꺼기 제외)
+        let validHidersCount = 0;
+        Object.values(existingHiders).forEach(h => { if(h && h.pX !== undefined) validHidersCount++; });
+        document.getElementById('target-count').innerText = validHidersCount;
+        
         document.getElementById('ui-move').style.display = 'none';
         document.getElementById('ui-seek').style.display = 'flex';
         if (isMobile) { actionBtn.style.display = 'none'; }
@@ -1275,16 +1281,15 @@ async function saveData(myData) {
         seekCanvas.height = MAP_HEIGHT * dpr;
         seekCanvas.style.display = 'block';
 
-        // [기존] activeTargets = Object.values(existingHiders).map(...) 
-// 👇 아래 코드로 덮어씌우기
-activeTargets = [];
-Object.entries(existingHiders).forEach(([key, data]) => {
-  if (data) {
-    const img = new Image();
-    img.src = data.image; 
-    activeTargets.push({ ...data, dbKey: key, img: img, caught: false });
-  }
-});
+        // 💡 [수정] activeTargets 안전하게 장전 (dbKey 부여, null 무시)
+        activeTargets = [];
+        Object.entries(existingHiders).forEach(([key, data]) => {
+          if (data && data.pX !== undefined) {
+            const img = new Image();
+            img.src = data.image; 
+            activeTargets.push({ ...data, dbKey: key, img: img, caught: false });
+          }
+        });
 
         if (seekLoopId) cancelAnimationFrame(seekLoopId);
         seekLoop();
@@ -1302,14 +1307,17 @@ Object.entries(existingHiders).forEach(([key, data]) => {
           });
 
           db.ref('rooms/' + id + '/caught').on('child_added', snap => {
-            const idx = snap.key;
+            const caughtDbKey = snap.key;
             
-            if (activeTargets[idx] && !activeTargets[idx].caught) {
-              activeTargets[idx].caught = true; 
+            // 💡 [수정] 순서(idx)가 아니라 파이어베이스 고유번호(dbKey)로 잡힌 타겟 찾기!
+            const hitTarget = activeTargets.find(t => t.dbKey === caughtDbKey);
+            
+            if (hitTarget && !hitTarget.caught) {
+              hitTarget.caught = true; 
               
               const jelly = document.createElement('div');
               jelly.className = 'jelly-busted'; jelly.innerText = '😳💦';
-              jelly.style.left = `${activeTargets[idx].pX}px`; jelly.style.top = `${activeTargets[idx].pY}px`;
+              jelly.style.left = `${hitTarget.pX}px`; jelly.style.top = `${hitTarget.pY}px`;
               mapContainer.appendChild(jelly);
 
               mapContainer.classList.add('shake-screen');
@@ -1655,14 +1663,24 @@ Object.entries(existingHiders).forEach(([key, data]) => {
     };
 
     window.joinRoom = (roomId) => {
-      const nick = document.getElementById('nickname-input').value.trim();
-      if (!nick) return showGameAlert("닉네임을 입력해주세요!");
-      myUid = nick;
-      
-      currentRoomId = roomId;
-      window.currentRound = 1;
+  const nick = document.getElementById('nickname-input').value.trim();
+  if (!nick) return showGameAlert("닉네임을 입력해주세요!");
+  myUid = nick;
+  
+  currentRoomId = roomId;
+  
+  // 💡 입장하는 방의 현재 라운드를 파악하여 싱크로율 맞춤
+  if (db) {
+    db.ref('rooms/' + roomId).once('value').then(snap => {
+      const data = snap.val();
+      window.currentRound = data ? (data.round || 1) : 1;
       enterMoveMode();
-    };
+    });
+  } else {
+    window.currentRound = 1;
+    enterMoveMode();
+  }
+};
 
     function enterMoveMode() {
       if (typeof listenForRoundChange === 'function') listenForRoundChange();
