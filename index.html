@@ -232,7 +232,6 @@
         <button id="btn-brush" class="btn-sub active-tool" onclick="window.setTool('brush')">🎨물감</button>
         <button id="btn-eraser" class="btn-sub" onclick="window.setTool('eraser')">🧹</button>
         
-        <!-- 💡 복구된 텍스트/이모지 스탬프 툴 -->
         <button id="btn-text" class="btn-sub" onclick="window.setTool('text')">🔠글씨</button>
         <input type="text" id="text-input" placeholder="스탬프" style="width:90px; display:none; border:2px solid #3498db;">
         
@@ -260,21 +259,17 @@
       </span>
     </div>
   </div> 
-  <!-- 🕹️ 상단 메뉴바 끝 -->
 
-  <!-- 💡 [모바일 최적화 완벽 적용] 게임오버 팝업창 -->
+  <!-- 💡 게임오버 팝업창 -->
   <div id="ui-gameover" style="display:none; flex-direction:column; align-items:center; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#111; padding:20px; border-radius:12px; border:3px solid #f1c40f; z-index:9999; box-shadow: 0 10px 30px rgba(0,0,0,0.8); width:90%; max-width:400px; box-sizing:border-box;">
     <h2 id="result-title" style="margin:0 0 15px 0; color:#f1c40f; text-align:center; font-size:22px;">🏆 최종 결과 발표</h2>
-    <div id="leaderboard-box" style="background:#222; padding:15px; border-radius:8px; margin-bottom:15px; color:white; text-align:left; max-height:40vh; overflow-y:auto; width:100%; box-sizing:border-box;">
-       <!-- 순위가 여기에 채워집니다 -->
-    </div>
+    <div id="leaderboard-box" style="background:#222; padding:15px; border-radius:8px; margin-bottom:15px; color:white; text-align:left; max-height:40vh; overflow-y:auto; width:100%; box-sizing:border-box;"></div>
     <button id="btn-next-round" class="btn-main" style="width:100%; padding:14px; font-size:16px; font-weight:bold; border-radius:8px;"></button>
   </div>
 
   <div id="scroll-wrapper">
     <div id="map-container">
       <canvas id="bg-canvas"></canvas>
-      <!-- 💡 [추가] 술래 모드 전용 렌더링 캔버스 -->
       <canvas id="seek-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 4; display: none; pointer-events: none;"></canvas>
       
       <div id="local-player" class="player-obj">
@@ -290,22 +285,17 @@
   <div id="mobile-action-btn">📸</div>
 
   <script>
-    // 💡 기본 alert를 대체하는 커스텀 팝업 함수
     function showGameAlert(msg, callback = null, duration = 2500) {
       const overlay = document.getElementById('game-alert-overlay');
       document.getElementById('game-alert-message').innerHTML = msg;
       overlay.style.display = 'flex';
       
-      // 지정된 시간(기본 2.5초) 후 팝업 닫기
       setTimeout(() => {
         overlay.style.display = 'none';
-        if (callback) callback(); // 팝업 닫힌 후 실행할 코드(페이지 이동 등)
+        if (callback) callback(); 
       }, duration);
     }
 
-    // ==========================================
-    // 💡 Firebase V8 안정화 버전 연동
-    // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyDYmOC4OiW90_8ee0ndpO6xSRSBKJENlws",
       authDomain: "webcchachameleon.firebaseapp.com",
@@ -322,9 +312,6 @@
       db = firebase.database();
     } catch(e) { console.warn("Firebase 오류 -> 로컬 모드 작동", e); }
 
-    // ==========================================
-    // 🔊 자체 Web Audio API 사운드 엔진
-    // ==========================================
     let audioCtx = null;
     function initAudio() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -375,9 +362,6 @@
       }
     }
 
-    // ==========================================
-    // 💡 전역 변수 (단 한번만 선언!)
-    // ==========================================
     let mode = 'move'; 
     let pX, pY, pWidth = 100, pHeight = 60;
     let vX = 0, vY = 0, rotation = 0;
@@ -397,11 +381,11 @@
     let comboCount = 0;
     let lastCatchTime = 0;
     let myScore = 0;
+    window.currentRound = 1;
 
     let currentShape = 'rect';
     const shapeTypes = ['rect', 'circle', 'pill', 'rhombus'];
     const shapeIcons = {'rect':'🔲', 'circle':'🟡', 'pill':'💊', 'rhombus':'🔺'};
-    
     let isIntentional = false; 
 
     const scrollWrapper = document.getElementById('scroll-wrapper');
@@ -417,7 +401,6 @@
     const doodleCanvas = document.getElementById('doodle-canvas');
     const doodleCtx = doodleCanvas.getContext('2d');
 
-    // 💡 3단계: 캔버스 렌더링 변수 및 숨결 루프 함수
     const seekCanvas = document.getElementById('seek-canvas');
     const seekCtx = seekCanvas.getContext('2d');
     let activeTargets = [];
@@ -430,8 +413,6 @@
 
       activeTargets.forEach(t => {
         if (t.caught) return;
-
-        // 숨결(Breathing) 애니메이션 수학적 계산
         const breathScale = 1 + Math.sin(now / 477) * 0.02;
         const breathY = Math.sin(now / 477) * 2;
 
@@ -441,36 +422,26 @@
         seekCtx.scale(breathScale, breathScale);
         seekCtx.globalAlpha = t.opacity || 1;
 
-        // 모양(Shape) 클리핑 적용
         seekCtx.beginPath();
         const hw = (t.pWidth * dpr) / 2;
         const hh = (t.pHeight * dpr) / 2;
         
-        if (t.shape === 'circle') {
-          seekCtx.arc(0, 0, Math.max(hw, hh), 0, Math.PI * 2);
-        } else if (t.shape === 'pill') {
-          seekCtx.roundRect(-hw, -hh, hw * 2, hh * 2, Math.min(hw, hh));
-        } else if (t.shape === 'rhombus') {
+        if (t.shape === 'circle') seekCtx.arc(0, 0, Math.max(hw, hh), 0, Math.PI * 2);
+        else if (t.shape === 'pill') seekCtx.roundRect(-hw, -hh, hw * 2, hh * 2, Math.min(hw, hh));
+        else if (t.shape === 'rhombus') {
           seekCtx.moveTo(0, -hh); seekCtx.lineTo(hw, 0);
           seekCtx.lineTo(0, hh); seekCtx.lineTo(-hw, 0);
-        } else {
-          seekCtx.rect(-hw, -hh, hw * 2, hh * 2);
-        }
+        } else seekCtx.rect(-hw, -hh, hw * 2, hh * 2);
         seekCtx.clip();
 
-        // 캡처한 이미지 그리기
-        if (t.img && t.img.complete) {
-          seekCtx.drawImage(t.img, -hw, -hh, hw * 2, hh * 2);
-        }
+        if (t.img && t.img.complete) seekCtx.drawImage(t.img, -hw, -hh, hw * 2, hh * 2);
 
-        // 눈알 그리기
         if (t.hasEye) {
           seekCtx.font = `${22 * dpr}px sans-serif`;
           seekCtx.textAlign = 'center';
           seekCtx.textBaseline = 'middle';
           seekCtx.fillText('👀', 0, 0);
         }
-
         seekCtx.restore();
       });
 
@@ -500,9 +471,6 @@
       return x - Math.floor(x);
     }
 
-    // ==========================================
-    // 🎨 5000px "텍스트 지옥" 초고퀄리티 맵 생성기 (10종)
-    // ==========================================
     const mapGenerators = [
       function drawBlog() {
         let w = bgCanvas.width/dpr;
@@ -532,13 +500,11 @@
         bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
         bgCtx.fillStyle = '#111'; bgCtx.fillRect(0, 0, w, 50);
         bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 22px serif'; bgCtx.fillText('Webcha Times', 15, 33);
-        
         let cy = 100;
         bgCtx.fillStyle = '#000'; bgCtx.font = 'bold 30px serif'; bgCtx.fillText('[단독] 위장 젤리들 완벽 잠입', 20, cy); cy += 30;
         bgCtx.font = '22px serif'; bgCtx.fillText('전 세계 술래들 패닉 상태 빠져', 20, cy); cy += 40;
         bgCtx.fillStyle = '#888'; bgCtx.font = '13px sans-serif'; bgCtx.fillText('김웹챠 기자 | 입력 2026-08-22 09:00', 20, cy); cy += 30;
         bgCtx.strokeStyle = '#eee'; bgCtx.beginPath(); bgCtx.moveTo(20,cy); bgCtx.lineTo(w-20,cy); bgCtx.stroke(); cy += 30;
-
         const newsText = ["최근 출시된 웹 기반 멀티플레이 게임 '웹챠 카멜레온'이", "폭발적인 인기를 끌고 있다. 이 게임은 유저가 배경을 캡처해", "자신을 위장하는 독특한 시스템을 갖추고 있다.", "전문가들은 '인간의 착시를 이용한 심리전'을 성공 요인으로 꼽았다.", "텍스트가 밀집된 구간에서 위장할 경우, 시선을 완벽히 회피해", "명당으로 불리고 있다.", "개발진은 텍스트 맵을 추가해 난이도를 높일 계획이다.", "일부 유저들은 '시력 검사 게임이냐'는 불만을 토로하기도 했다.", "그럼에도 동시 접속자 수는 최고치를 경신 중이다."];
         bgCtx.fillStyle = '#222'; bgCtx.font = '17px serif';
         for(let i=0; i<120; i++) {
@@ -852,9 +818,6 @@
     }
     window.addEventListener('resize', renderMap);
 
-    // ==========================================
-    // 💡 이미지 업로드 및 압축 로직 (커스텀 맵)
-    // ==========================================
     window.loadCustomMap = (event) => {
       const file = event.target.files[0];
       if (!file) return;
@@ -895,9 +858,6 @@
       };
     }
 
-    // ==========================================
-    // 🎨 투명도, 스포이드, 이모지 스탬프, 모양 설정
-    // ==========================================
     window.toggleShape = () => {
       if(mode !== 'edit') return;
       let idx = shapeTypes.indexOf(currentShape);
@@ -1014,9 +974,6 @@
     mapContainer.addEventListener('mousedown', (e) => { if (mode === 'edit' && drawTool === 'picker') extractColor(e.clientX, e.clientY); });
     mapContainer.addEventListener('touchstart', (e) => { if (mode === 'edit' && drawTool === 'picker') extractColor(e.touches[0].clientX, e.touches[0].clientY); });
 
-    // ==========================================
-    // 🎛️ 회전 및 스캔 & 주차 시스템
-    // ==========================================
     let isResizing = false;
     function onResizeStart(e) {
       if (mode !== 'move') return;
@@ -1166,9 +1123,6 @@
       }
     }
 
-    // ==========================================
-    // 🚦 과반수 레디 시스템 (방장 AFK 방지)
-    // ==========================================
     let isReady = false;
     let readyCountdown = null;
     let countdownValue = 5;
@@ -1231,13 +1185,17 @@
             countdownValue--;
             if (countdownValue <= 0) {
               clearInterval(readyCountdown);
+              readyCountdown = null;
+              statusText.innerText = `🚨 게임 시작!`;
               window.startPartySeek(); 
             } else {
               statusText.innerText = `${baseText} ⏳ ${countdownValue}초 뒤 시작!`;
             }
           }, 1000);
         }
-        statusText.innerText = `${baseText} ⏳ ${countdownValue}초 뒤 시작!`;
+        if(countdownValue > 0) {
+          statusText.innerText = `${baseText} ⏳ ${countdownValue}초 뒤 시작!`;
+        }
         statusText.style.color = '#f1c40f'; 
       } else {
         if (readyCountdown) {
@@ -1280,9 +1238,6 @@
       }
     };
 
-    // ==========================================
-    // 🕵️ 술래 모드 및 게임 결과
-    // ==========================================
     async function initSeeker(id) {
       let roomData = null;
       if (db) {
@@ -1302,7 +1257,7 @@
         localPlayer.style.display = 'none';
 
         existingHiders = roomData.list || [];
-        document.getElementById('target-count').innerText = existingHiders.length;
+        document.getElementById('target-count').innerText = Object.keys(existingHiders).length;
         document.getElementById('ui-move').style.display = 'none';
         document.getElementById('ui-seek').style.display = 'flex';
         if (isMobile) { actionBtn.style.display = 'none'; }
@@ -1311,7 +1266,7 @@
         seekCanvas.height = MAP_HEIGHT * dpr;
         seekCanvas.style.display = 'block';
 
-        activeTargets = existingHiders.map((data, idx) => {
+        activeTargets = Object.values(existingHiders).map((data, idx) => {
           const img = new Image();
           img.src = data.image; 
           return { ...data, idx: idx, img: img, caught: false };
@@ -1486,7 +1441,12 @@
         const caughtSnap = await db.ref('rooms/' + currentRoomId + '/caught').once('value');
         const caughtData = caughtSnap.val() || {};
         
-        const myHiderIdx = existingHiders.findIndex(h => h.uid === myUid);
+        let myHiderIdx = -1;
+        if(existingHiders && Array.isArray(existingHiders)){
+            myHiderIdx = existingHiders.findIndex(h => h.uid === myUid);
+        } else if (existingHiders && typeof existingHiders === 'object') {
+            myHiderIdx = Object.values(existingHiders).findIndex(h => h.uid === myUid);
+        }
 
         if (myHiderIdx !== -1 && !caughtData[myHiderIdx]) {
           survived = true;
@@ -1555,34 +1515,6 @@
       });
     }
 
-    function showFloatingBanner(text) {
-      const banner = document.createElement('div');
-      banner.className = 'taunt-floating-banner';
-      banner.innerText = text;
-      document.body.appendChild(banner); 
-    }
-
-    function showFloatingText(x, y, text, color) {
-      const ft = document.createElement('div');
-      ft.className = 'floating-text'; ft.style.color = color; ft.innerText = text;
-      const rect = mapContainer.getBoundingClientRect();
-      ft.style.left = `${x - rect.left - 40}px`; 
-      ft.style.top = `${y - rect.top - 20}px`;
-      mapContainer.appendChild(ft);
-    }
-
-    function showFloatingCombo(x, y, text, color) {
-      const ft = document.createElement('div');
-      ft.className = 'combo-text'; ft.style.color = color; ft.innerText = text;
-      const rect = mapContainer.getBoundingClientRect();
-      ft.style.left = `${x - rect.left}px`; 
-      ft.style.top = `${y - rect.top}px`;
-      mapContainer.appendChild(ft);
-    }
-
-    // ==========================================
-    // 🕹️ 조이스틱 및 컨트롤
-    // ==========================================
     let isJoystickActive = false; let joyBase = document.getElementById('joy-base');
     let joyKnob = document.getElementById('joy-knob'); let joyStart = { x: 0, y: 0 };
     const MAX_JOY_RADIUS = 40; const JOY_SPEED = 1.2; 
@@ -1641,13 +1573,11 @@
       requestAnimationFrame(gameLoop);
     }
 
-    // 💡 [v2.0 업데이트] 로비 및 방 생성 시스템
     async function initSystem() {
       const urlParams = new URLSearchParams(window.location.search);
       currentRoomId = urlParams.get('room');
       const isSeekMode = urlParams.get('mode') === 'seek';
 
-      // 1. 방 링크를 타고 바로 들어온 경우 (로비에서 닉네임만 입력받고 바로 입장)
       if (currentRoomId) {
         document.getElementById('public-room-list').style.display = 'none'; 
         document.querySelector('.lobby-box button').innerText = "이 방에 입장하기";
@@ -1661,7 +1591,6 @@
         return; 
       }
 
-      // 2. 그냥 홈페이지에 접속한 경우
       if (db) {
         db.ref('rooms').on('value', snap => {
           const rooms = snap.val() || {};
@@ -1672,7 +1601,7 @@
           for (const [roomId, data] of Object.entries(rooms)) {
             if (data.status === 'waiting') {
               hasRoom = true;
-              const currentPlayers = data.list ? data.list.length : 0;
+              const currentPlayers = data.list ? Object.keys(data.list).length : 0;
               const item = document.createElement('div');
               item.className = 'room-item';
               item.innerHTML = `
@@ -1686,10 +1615,6 @@
         });
       }
     }
-
-    // ==========================================
-    // 💡 방 만들기 & 3라운드 제어 통합 시스템
-    // ==========================================
 
     window.currentRound = window.currentRound || 1;
 
@@ -1725,56 +1650,54 @@
       enterMoveMode();
     };
 
-    // 💡 공통: 닉네임 설정 후 움직임 모드로 진입
-function enterMoveMode() {
-  if (typeof listenForRoundChange === 'function') listenForRoundChange();
+    function enterMoveMode() {
+      if (typeof listenForRoundChange === 'function') listenForRoundChange();
 
-  document.getElementById('lobby-overlay').style.display = 'none';
-  existingHiders = [];
-  mode = 'move'; 
-  renderMap();
-  
-  pWidth = 120; pHeight = 60;
-  pX = Math.round(scrollWrapper.clientWidth / 2); 
-  pY = Math.round(scrollWrapper.clientHeight / 2); 
-  
-  document.getElementById('ui-move').style.display = 'flex';
-  
-  const lp = document.getElementById('local-player');
-  lp.style.display = 'flex';
-  lp.style.width = `${pWidth}px`; 
-  lp.style.height = `${pHeight}px`;
-  
-  if (localStorage.getItem('isHost_' + currentRoomId) === 'true') {
-    document.getElementById('btn-upload-map').style.display = 'inline-block';
-  }
+      document.getElementById('lobby-overlay').style.display = 'none';
+      existingHiders = [];
+      mode = 'move'; 
+      renderMap();
+      
+      pWidth = 120; pHeight = 60;
+      pX = Math.round(scrollWrapper.clientWidth / 2); 
+      pY = Math.round(scrollWrapper.clientHeight / 2); 
+      
+      document.getElementById('ui-move').style.display = 'flex';
+      
+      const lp = document.getElementById('local-player');
+      lp.style.display = 'flex';
+      lp.style.width = `${pWidth}px`; 
+      lp.style.height = `${pHeight}px`;
+      
+      if (localStorage.getItem('isHost_' + currentRoomId) === 'true') {
+        document.getElementById('btn-upload-map').style.display = 'inline-block';
+      }
 
-  // 👇👇👇 여기가 수정되었습니다! (방장도 시작 신호를 받도록 추가)
-  if (localStorage.getItem('isHost_' + currentRoomId) !== 'true') {
-     initJoinHider(currentRoomId); 
-  } else {
-     // 💡 [긴급 패치] 방장 전용 '게임 시작' 감지기
-     if (db) {
-       db.ref('rooms/' + currentRoomId + '/status').on('value', snap => {
-         if (snap.val() === 'seek' && mode !== 'seek') { 
-           showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
-             window.transitionToSeekMode(); 
-           }, 2000); 
+      if (localStorage.getItem('isHost_' + currentRoomId) !== 'true') {
+         initJoinHider(currentRoomId); 
+      } else {
+         if (db) {
+           db.ref('rooms/' + currentRoomId + '/status').off('value');
+           db.ref('rooms/' + currentRoomId + '/status').on('value', snap => {
+             if (snap.val() === 'seek' && mode !== 'seek') { 
+               showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
+                 window.transitionToSeekMode(); 
+               }, 2000); 
+             }
+           });
          }
-       });
-     }
-     gameLoop(); 
-  }
-}
+         gameLoop(); 
+      }
+    }
 
     function startNextRound() {
       if (!db) return;
       const nextMapIndex = Math.floor(Math.random() * mapGenerators.length);
-      window.currentRound++;
+      const nextRoundNum = window.currentRound + 1;
       const updates = {
         'status': 'waiting',
         'mapIndex': nextMapIndex,
-        'round': window.currentRound,
+        'round': nextRoundNum,
         'list': null,    
         'caught': null,  
         'ready': null,   
@@ -1785,6 +1708,7 @@ function enterMoveMode() {
 
     function listenForRoundChange() {
       if (!db || !currentRoomId) return;
+      db.ref('rooms/' + currentRoomId + '/round').off('value');
       db.ref('rooms/' + currentRoomId + '/round').on('value', snap => {
         const r = snap.val();
         if (r && r > window.currentRound) {
@@ -1833,6 +1757,7 @@ function enterMoveMode() {
 
       if (roomData) {
         if (db) {
+          db.ref('rooms/' + id + '/status').off('value');
           db.ref('rooms/' + id + '/status').on('value', snap => {
             if (snap.val() === 'seek' && mode !== 'seek') { 
               showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
@@ -1861,11 +1786,11 @@ function enterMoveMode() {
         if (localStorage.getItem('hidden_' + id)) {
           showGameAlert("👀 이미 위장 완료!<br><span style='font-size:16px; color:#ddd;'>친구들을 기다리거나 술래 모드를 시작하세요.</span>");
           document.getElementById('local-player').style.display = 'none'; 
-          showShareScreen(existingHiders.length);
+          showShareScreen(Object.keys(existingHiders).length);
           return; 
         }
         
-        if (existingHiders.length >= 9) {
+        if (Object.keys(existingHiders).length >= 9) {
           if (db) db.ref('rooms/' + id + '/status').set('seek');
           return;
         }
