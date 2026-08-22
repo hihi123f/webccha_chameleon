@@ -104,11 +104,12 @@
     .walking { animation: waddle 0.25s infinite alternate; }
     @keyframes waddle { 0% { margin-left: -2px; } 100% { margin-left: 2px; } }
 
-    .breathing { box-shadow: none !important; animation: breath 3s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
-    @keyframes breath { 
-      0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); opacity: 1; } 
-      50% { transform: translate(-50%, calc(-50% - 2px)) rotate(var(--rot)) scale(1.02); opacity: 0.9; } 
-    }
+    /* [기존 애니메이션 통째로 지우고 아래 코드로 교체] */
+.breathing { box-shadow: none !important; animation: breath 3s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
+@keyframes breath { 
+  0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); opacity: 1; } 
+  50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)) scale(1.01); opacity: 0.95; } 
+}
 
     .jelly-busted { position: absolute; font-size: 45px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
     @keyframes popOut { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
@@ -413,8 +414,8 @@
 
       activeTargets.forEach(t => {
         if (t.caught) return;
-        const breathScale = 1 + Math.sin(now / 477) * 0.02;
-        const breathY = Math.sin(now / 477) * 2;
+        const breathScale = 1 + Math.sin(now / 600) * 0.01; 
+        const breathY = Math.sin(now / 600) * 1;
 
         seekCtx.save();
         seekCtx.translate(t.pX * dpr, (t.pY + breathY) * dpr);
@@ -1104,24 +1105,32 @@
       };
     };
 
-    async function saveData(myData) {
-      localStorage.setItem('hidden_' + currentRoomId, 'true');
+    // 💡 [수정] DB 배열 깨짐으로 인한 2라운드 멈춤 및 UI 증발 완벽 해결
+async function saveData(myData) {
+  localStorage.setItem('hidden_' + currentRoomId, 'true');
 
-      if (db) {
-        const roomRef = db.ref('rooms/' + currentRoomId);
-        const snap = await roomRef.once('value');
-        let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
-        if (!roomData.list) roomData.list = [];
-        roomData.list.push(myData);
-        await roomRef.set(roomData);
-        showShareScreen(roomData.list.length);
-      } else {
-        let roomData = JSON.parse(localStorage.getItem('room_' + currentRoomId)) || { mapIndex: currentMapIndex, list: [] };
-        roomData.list.push(myData);
-        localStorage.setItem('room_' + currentRoomId, JSON.stringify(roomData));
-        showShareScreen(roomData.list.length);
-      }
+  if (db) {
+    const roomRef = db.ref('rooms/' + currentRoomId);
+    const snap = await roomRef.once('value');
+    let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
+    
+    // 배열이 꼬였을 때를 대비한 안전 장치 추가
+    let currentList = [];
+    if (roomData.list) {
+      currentList = Array.isArray(roomData.list) ? roomData.list : Object.values(roomData.list);
     }
+    currentList.push(myData);
+    roomData.list = currentList;
+    
+    await roomRef.set(roomData);
+    showShareScreen(roomData.list.length);
+  } else {
+    let roomData = JSON.parse(localStorage.getItem('room_' + currentRoomId)) || { mapIndex: currentMapIndex, list: [] };
+    roomData.list.push(myData);
+    localStorage.setItem('room_' + currentRoomId, JSON.stringify(roomData));
+    showShareScreen(roomData.list.length);
+  }
+}
 
     let isReady = false;
     let readyCountdown = null;
@@ -1266,11 +1275,16 @@
         seekCanvas.height = MAP_HEIGHT * dpr;
         seekCanvas.style.display = 'block';
 
-        activeTargets = Object.values(existingHiders).map((data, idx) => {
-          const img = new Image();
-          img.src = data.image; 
-          return { ...data, idx: idx, img: img, caught: false };
-        });
+        // [기존] activeTargets = Object.values(existingHiders).map(...) 
+// 👇 아래 코드로 덮어씌우기
+activeTargets = [];
+Object.entries(existingHiders).forEach(([key, data]) => {
+  if (data) {
+    const img = new Image();
+    img.src = data.image; 
+    activeTargets.push({ ...data, dbKey: key, img: img, caught: false });
+  }
+});
 
         if (seekLoopId) cancelAnimationFrame(seekLoopId);
         seekLoop();
@@ -1380,7 +1394,7 @@
         }
         
         if (db) {
-          const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + hitTargetData.idx);
+          const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + hitTargetData.dbKey);
           catchRef.transaction((current) => {
             if (current === null) return myUid; 
             return; 
