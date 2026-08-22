@@ -1392,7 +1392,10 @@
         }
         
         if (db) {
-          const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + hitTargetData.dbKey);
+          // 💡 [수정됨] 1라운드가 안 끝나던 주범 해결 (에러 없이 정상적으로 타겟을 잡습니다)
+          const targetKey = hitTargetData.dbKey || hitTargetData.idx; 
+          const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + targetKey);
+          
           catchRef.transaction((current) => {
             if (current === null) return myUid; 
             return; 
@@ -1415,9 +1418,7 @@
                 showFloatingCombo(e.clientX, e.clientY, text, color);
               }
 
-              db.ref('rooms/' + currentRoomId + '/killLogs').push({
-                catcher: myUid 
-              });
+              db.ref('rooms/' + currentRoomId + '/killLogs').push({ catcher: myUid });
             } else {
               showFloatingText(e.clientX, e.clientY, `앗! 남이 먼저 낚아챔`, '#e67e22');
             }
@@ -1437,7 +1438,8 @@
           if (minDistToAny !== Infinity) {
             if (minDistToAny < 120) { hintMsg = `🔥 완전 뜨거움! (${Math.round(minDistToAny)}px)`; hintColor = "#ff4757"; }
             else if (minDistToAny < 300) { hintMsg = `♨️ 따뜻함 (${Math.round(minDistToAny)}px)`; hintColor = "#ffa502"; }
-            else { hintMsg = "❄️ 아주 멉니다"; hintColor = "#747d8c"; }
+            // 💡 [수정됨] 헛방 쳤을 때 거리가 멀어도 픽셀 숫자가 출력됩니다!
+            else { hintMsg = `❄️ 아주 멉니다 (${Math.round(minDistToAny)}px)`; hintColor = "#747d8c"; }
           }
           showFloatingText(e.clientX, e.clientY, hintMsg, hintColor);
         }
@@ -1453,15 +1455,19 @@
         const caughtSnap = await db.ref('rooms/' + currentRoomId + '/caught').once('value');
         const caughtData = caughtSnap.val() || {};
         
-        let myHiderIdx = -1;
-        if(existingHiders && Array.isArray(existingHiders)){
-            myHiderIdx = existingHiders.findIndex(h => h && h.uid === myUid);
-        } else if (existingHiders && typeof existingHiders === 'object') {
-            myHiderIdx = Object.values(existingHiders).findIndex(h => h && h.uid === myUid);
-        }
+        let isHider = false;
+        
+        // 💡 [수정됨] 에러 없이 내가 살아남았는지 정확히 검사합니다.
+        Object.entries(existingHiders).forEach(([key, data]) => {
+          if (data && data.uid === myUid) {
+            isHider = true;
+            if (!caughtData[key] && !caughtData[data.idx]) {
+               survived = true; 
+            }
+          }
+        });
 
-        if (myHiderIdx !== -1 && !caughtData[myHiderIdx]) {
-          survived = true;
+        if (survived) {
           myScore += 200; 
           showFloatingBanner("🎉 생존 성공! 보너스 +200점");
         } else {
@@ -1472,7 +1478,7 @@
           uid: myUid,
           score: myScore,
           survived: survived,
-          isHider: (myHiderIdx !== -1) 
+          isHider: isHider 
         });
 
         document.getElementById('result-title').innerText = window.currentRound >= 3 ? "🏆 최종 순위 발표" : `🏁 라운드 ${window.currentRound} 종료!`;
