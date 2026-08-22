@@ -133,7 +133,7 @@
     <div id="ui-share" class="ui-group" style="display:none;">
       <span id="room-status-text" style="color:#2ecc71; font-size:13px; font-weight:bold;"></span>
       <button class="btn-main" onclick="window.copyLink()">🔗 방 링크 복사</button>
-      <button class="btn-action" id="btn-start-seek" onclick="window.startPartySeek()">🔍 술래 시작</button>
+      <button class="btn-action" id="btn-start-seek" onclick="window.toggleReady()">✔️ 준비 (레디)</button>
     </div>
 
     <div id="ui-seek" class="ui-group" style="display:none; width: 100%; justify-content: space-between;">
@@ -764,21 +764,95 @@
       }
     }
 
+    // ==========================================
+    // 🚦 과반수 레디 시스템 (방장 AFK 방지)
+    // ==========================================
+    let isReady = false;
+    let readyCountdown = null;
+    let countdownValue = 5;
+    let _totalHidden = 0;
+    let _readyCount = 0;
+
+    window.toggleReady = () => {
+      if (!db) {
+        window.startPartySeek(); // 오프라인일 땐 바로 시작
+        return;
+      }
+      
+      isReady = !isReady;
+      const btn = document.getElementById('btn-start-seek');
+      
+      if (isReady) {
+        btn.innerText = '❌ 준비 취소';
+        btn.style.background = '#95a5a6'; // 회색
+        db.ref('rooms/' + currentRoomId + '/ready/' + myUid).set(true);
+      } else {
+        btn.innerText = '✔️ 준비 (레디)';
+        btn.style.background = '#e74c3c'; // 빨간색
+        db.ref('rooms/' + currentRoomId + '/ready/' + myUid).remove();
+      }
+    };
+
     function showShareScreen(count) {
       mode = 'share';
       document.getElementById('ui-edit').style.display = 'none';
       document.getElementById('ui-share').style.display = 'flex';
-      
-      const isHost = localStorage.getItem('isHost_' + currentRoomId) === 'true';
-      if (isHost) {
-        document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (방장: 언제든 시작 가능)`;
-        document.getElementById('btn-start-seek').style.display = 'inline-block';
-      } else {
-        document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (방장 대기중...)`;
-        document.getElementById('btn-start-seek').style.display = 'none';
-      }
-
       if (isMobile) { actionBtn.style.display = 'none'; }
+
+      // 기존처럼 방장 여부를 묻지 않고 모두에게 준비 버튼을 보여줍니다.
+      document.getElementById('btn-start-seek').style.display = 'inline-block';
+
+      if (db) {
+        // 1. 총 숨은 인원 실시간 감지
+        db.ref('rooms/' + currentRoomId + '/list').on('value', snap => {
+          _totalHidden = snap.val() ? snap.val().length : 0;
+          updateReadyState();
+        });
+        
+        // 2. 레디한 인원 실시간 감지
+        db.ref('rooms/' + currentRoomId + '/ready').on('value', snap => {
+          _readyCount = snap.val() ? Object.keys(snap.val()).length : 0;
+          updateReadyState();
+        });
+      } else {
+        document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (오프라인 모드)`;
+      }
+    }
+
+    function updateReadyState() {
+      const statusText = document.getElementById('room-status-text');
+      
+      // 💡 과반수 기준 계산 (1명이면 1명, 2명이면 2명, 3명이면 2명, 4명이면 3명 필요)
+      const majority = Math.max(1, Math.floor(_totalHidden / 2) + 1);
+      
+      let baseText = `현재 ${_totalHidden}명 주차! (레디: ${_readyCount}/${majority}명)`;
+      
+      if (_readyCount >= majority) {
+        // 과반수가 넘으면 타이머 시작!
+        if (!readyCountdown) {
+          countdownValue = 5;
+          playSound('shutter'); // 타이머 시작 효과음
+          readyCountdown = setInterval(() => {
+            countdownValue--;
+            if (countdownValue <= 0) {
+              clearInterval(readyCountdown);
+              window.startPartySeek(); // 5초 뒤 전원 동시 시작!
+            } else {
+              statusText.innerText = `${baseText} ⏳ ${countdownValue}초 뒤 시작!`;
+            }
+          }, 1000);
+        }
+        statusText.innerText = `${baseText} ⏳ ${countdownValue}초 뒤 시작!`;
+        statusText.style.color = '#f1c40f'; // 긴장감 있는 노란색
+      } else {
+        // 과반수가 깨지면 타이머 즉시 정지 및 취소
+        if (readyCountdown) {
+          clearInterval(readyCountdown);
+          readyCountdown = null;
+        }
+        statusText.innerText = baseText;
+        statusText.style.color = '#2ecc71'; // 평온한 초록색
+      }
     }
 
     window.copyLink = () => {
