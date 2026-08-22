@@ -996,7 +996,7 @@
       }
     }
 
-    mapContainer.addEventListener('click', (e) => {
+   mapContainer.addEventListener('click', (e) => {
       if (mode !== 'seek') return;
       const hitTarget = e.target.closest('.target-obj');
       const now = Date.now();
@@ -1026,6 +1026,12 @@
                 showFloatingCombo(e.clientX, e.clientY, text, color);
               }
             } else {
+              showFloatingText(e.clientX, e.clientY, `앗! 남이 먼저 낚아챔`, '#e67e22');
+            }
+          });
+        }
+      } else {
+        // 💡 진짜 빈 공간을 클릭(헛방) 했을 때의 로직
         playSound('miss'); comboCount = 0; 
         life--; document.getElementById('life').innerText = life;
         mapContainer.classList.add('shake-screen');
@@ -1034,7 +1040,7 @@
         if (life <= 0) { 
           clearInterval(timerInterval); triggerGameOver("내 목숨 소진 ㅠㅠ"); 
         } else { 
-          // 💡 거리 계산 힌트 로직 추가
+          // 💡 거리 계산 힌트 로직
           const rect = mapContainer.getBoundingClientRect();
           const clickX = e.clientX - rect.left;
           const clickY = e.clientY - rect.top;
@@ -1057,6 +1063,7 @@
           showFloatingText(e.clientX, e.clientY, hintMsg, hintColor);
         }
       }
+    }); // 💡 이 닫는 괄호들이 삭제되어서 에러가 발생했던 것입니다!
 
     function triggerGameOver(taunt) {
       mode = 'gameover';
