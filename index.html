@@ -1105,31 +1105,19 @@
       };
     };
 
-    async function saveData(myData) {
+     // 💡 [수정] 방 전체 데이터를 덮어씌우지 않고, 안전하게 내 위장 정보만 리스트에 '추가(push)' 합니다.
+async function saveData(myData) {
   localStorage.setItem('hidden_' + currentRoomId, 'true');
 
   if (db) {
-    const roomRef = db.ref('rooms/' + currentRoomId);
-    const snap = await roomRef.once('value');
-    let roomData = snap.val() || { mapIndex: currentMapIndex, list: [] };
-    
-    // 💡 DB 에러(배열 깨짐) 방지 장치
-    let safeList = [];
-    if (roomData.list) {
-      safeList = Array.isArray(roomData.list) ? roomData.list : Object.values(roomData.list);
-    }
-    // null 값 제거 후 내 데이터 추가
-    safeList = safeList.filter(item => item !== null);
-    safeList.push(myData);
-    roomData.list = safeList;
-    
-    await roomRef.set(roomData);
-    showShareScreen(roomData.list.length);
+    // roomRef.set()을 쓰면 남의 레디 상태나 시작 신호가 날아가므로, list에 push만 합니다!
+    await db.ref('rooms/' + currentRoomId + '/list').push(myData);
+    showShareScreen();
   } else {
     let roomData = JSON.parse(localStorage.getItem('room_' + currentRoomId)) || { mapIndex: currentMapIndex, list: [] };
     roomData.list.push(myData);
     localStorage.setItem('room_' + currentRoomId, JSON.stringify(roomData));
-    showShareScreen(roomData.list.length);
+    showShareScreen();
   }
 }
 
@@ -1159,28 +1147,40 @@
       }
     };
 
-    function showShareScreen(count) {
-      mode = 'share';
-      document.getElementById('ui-edit').style.display = 'none';
-      document.getElementById('ui-share').style.display = 'flex';
-      if (isMobile) { actionBtn.style.display = 'none'; }
+    // 💡 [수정] 리스너가 여러 번 겹치지 않게 끄고(.off), 인원수도 정확히 셉니다.
+function showShareScreen(count = 0) {
+  mode = 'share';
+  document.getElementById('ui-edit').style.display = 'none';
+  document.getElementById('ui-share').style.display = 'flex';
+  if (isMobile) { actionBtn.style.display = 'none'; }
 
-      document.getElementById('btn-start-seek').style.display = 'inline-block';
+  document.getElementById('btn-start-seek').style.display = 'inline-block';
 
-      if (db) {
-        db.ref('rooms/' + currentRoomId + '/list').on('value', snap => {
-          _totalHidden = snap.val() ? snap.val().length : 0;
-          updateReadyState();
-        });
-        
-        db.ref('rooms/' + currentRoomId + '/ready').on('value', snap => {
-          _readyCount = snap.val() ? Object.keys(snap.val()).length : 0;
-          updateReadyState();
-        });
+  if (db) {
+    // 리스트 감지기 (중복 방지 off 추가)
+    db.ref('rooms/' + currentRoomId + '/list').off('value');
+    db.ref('rooms/' + currentRoomId + '/list').on('value', snap => {
+      let listData = snap.val();
+      if (listData) {
+        // 배열이든 오브젝트든 안전하게 인원수 계산
+        _totalHidden = Array.isArray(listData) ? listData.filter(x => x).length : Object.keys(listData).length;
       } else {
-        document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (오프라인 모드)`;
+        _totalHidden = 0;
       }
-    }
+      updateReadyState();
+    });
+    
+    // 레디 감지기 (중복 방지 off 추가)
+    db.ref('rooms/' + currentRoomId + '/ready').off('value');
+    db.ref('rooms/' + currentRoomId + '/ready').on('value', snap => {
+      let readyData = snap.val();
+      _readyCount = readyData ? Object.keys(readyData).length : 0;
+      updateReadyState();
+    });
+  } else {
+    document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (오프라인 모드)`;
+  }
+}
 
     function updateReadyState() {
       const statusText = document.getElementById('room-status-text');
