@@ -1725,35 +1725,47 @@
       enterMoveMode();
     };
 
-    function enterMoveMode() {
-      if (typeof listenForRoundChange === 'function') listenForRoundChange();
+    // 💡 공통: 닉네임 설정 후 움직임 모드로 진입
+function enterMoveMode() {
+  if (typeof listenForRoundChange === 'function') listenForRoundChange();
 
-      document.getElementById('lobby-overlay').style.display = 'none';
-      existingHiders = [];
-      mode = 'move'; 
-      renderMap();
-      
-      pWidth = 120; pHeight = 60;
-      pX = Math.round(scrollWrapper.clientWidth / 2); 
-      pY = Math.round(scrollWrapper.clientHeight / 2); 
-      
-      document.getElementById('ui-move').style.display = 'flex';
-      
-      const lp = document.getElementById('local-player');
-      lp.style.display = 'flex';
-      lp.style.width = `${pWidth}px`; 
-      lp.style.height = `${pHeight}px`;
-      
-      if (localStorage.getItem('isHost_' + currentRoomId) === 'true') {
-        document.getElementById('btn-upload-map').style.display = 'inline-block';
-      }
+  document.getElementById('lobby-overlay').style.display = 'none';
+  existingHiders = [];
+  mode = 'move'; 
+  renderMap();
+  
+  pWidth = 120; pHeight = 60;
+  pX = Math.round(scrollWrapper.clientWidth / 2); 
+  pY = Math.round(scrollWrapper.clientHeight / 2); 
+  
+  document.getElementById('ui-move').style.display = 'flex';
+  
+  const lp = document.getElementById('local-player');
+  lp.style.display = 'flex';
+  lp.style.width = `${pWidth}px`; 
+  lp.style.height = `${pHeight}px`;
+  
+  if (localStorage.getItem('isHost_' + currentRoomId) === 'true') {
+    document.getElementById('btn-upload-map').style.display = 'inline-block';
+  }
 
-      if (localStorage.getItem('isHost_' + currentRoomId) !== 'true') {
-         initJoinHider(currentRoomId); 
-      } else {
-         gameLoop(); 
-      }
-    }
+  // 👇👇👇 여기가 수정되었습니다! (방장도 시작 신호를 받도록 추가)
+  if (localStorage.getItem('isHost_' + currentRoomId) !== 'true') {
+     initJoinHider(currentRoomId); 
+  } else {
+     // 💡 [긴급 패치] 방장 전용 '게임 시작' 감지기
+     if (db) {
+       db.ref('rooms/' + currentRoomId + '/status').on('value', snap => {
+         if (snap.val() === 'seek' && mode !== 'seek') { 
+           showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
+             window.transitionToSeekMode(); 
+           }, 2000); 
+         }
+       });
+     }
+     gameLoop(); 
+  }
+}
 
     function startNextRound() {
       if (!db) return;
