@@ -1351,100 +1351,116 @@
       }
     }
 
-    mapContainer.addEventListener('click', (e) => {
-      if (mode !== 'seek') return;
-      const now = Date.now();
+    // 기존 mapContainer.addEventListener('click', (e) => { ... }) 전체를 아래 코드로 통째로 교체하세요.
 
-      const rect = mapContainer.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+mapContainer.addEventListener('click', (e) => {
+  if (mode !== 'seek') return;
+  const now = Date.now();
 
-      let hitTargetData = null;
-      let minDistToAny = Infinity;
+  const rect = mapContainer.getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+  const clickY = e.clientY - rect.top;
 
-      for (let i = activeTargets.length - 1; i >= 0; i--) {
-        const t = activeTargets[i];
-        if (t.caught) continue;
+  let hitTargetData = null;
+  let minDistToAny = Infinity;
 
-        const dist = Math.hypot(clickX - t.pX, clickY - t.pY);
-        if (dist < minDistToAny) minDistToAny = dist;
+  // 가장 위에 그려진(나중에 숨은) 녀석부터 클릭되도록 역순 탐색
+  for (let i = activeTargets.length - 1; i >= 0; i--) {
+    const t = activeTargets[i];
+    if (t.caught) continue;
 
-        const dx = clickX - t.pX;
-        const dy = clickY - t.pY;
-        const rad = t.rotation * Math.PI / 180;
-        
-        const rx = dx * Math.cos(rad) + dy * Math.sin(rad);
-        const ry = -dx * Math.sin(rad) + dy * Math.cos(rad);
+    // 힌트용 거리 계산 (가장 가까운 거리 찾기)
+    const dist = Math.hypot(clickX - t.pX, clickY - t.pY);
+    if (dist < minDistToAny) minDistToAny = dist;
 
-        const hw = t.pWidth / 2;
-        const hh = t.pHeight / 2;
+    const dx = clickX - t.pX;
+    const dy = clickY - t.pY;
+    const rad = t.rotation * Math.PI / 180;
+    
+    const rx = dx * Math.cos(rad) + dy * Math.sin(rad);
+    const ry = -dx * Math.sin(rad) + dy * Math.cos(rad);
 
-        if (rx >= -hw && rx <= hw && ry >= -hh && ry <= hh) {
-          hitTargetData = t;
-          break; 
-        }
-      }
+    const hw = t.pWidth / 2;
+    const hh = t.pHeight / 2;
 
-      if (hitTargetData) {
-        if (hitTargetData.uid === myUid) {
-          showFloatingText(e.clientX, e.clientY, `❌ 내 분신은 잡을 수 없음!`, '#e74c3c');
-          return;
-        }
-        
-        if (db) {
-          // 💡 [수정됨] 1라운드가 안 끝나던 주범 해결 (에러 없이 정상적으로 타겟을 잡습니다)
-          const targetKey = hitTargetData.dbKey || hitTargetData.idx; 
-          const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + targetKey);
+    if (rx >= -hw && rx <= hw && ry >= -hh && ry <= hh) {
+      hitTargetData = t;
+      break; 
+    }
+  }
+
+  // 💡 [수정] 스크롤 오차 없이 맵 내부에 정확히 텍스트를 띄우기 위한 커스텀 함수
+  const showLocalText = (txt, color) => {
+    const ft = document.createElement('div');
+    ft.className = 'floating-text'; 
+    ft.style.color = color; 
+    ft.innerText = txt;
+    ft.style.left = `${clickX - 40}px`; 
+    ft.style.top = `${clickY - 20}px`;
+    mapContainer.appendChild(ft);
+  };
+
+  if (hitTargetData) {
+    // 💡 2번 문제 해결: 내 분신 클릭 시 오차 없이 정확한 위치에 띄움
+    if (hitTargetData.uid === myUid) {
+      showLocalText(`❌ 앗! 내 위장이다!`, '#e74c3c');
+      return;
+    }
+    
+    if (db) {
+      const targetKey = hitTargetData.dbKey || hitTargetData.idx; 
+      const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + targetKey);
+      
+      catchRef.transaction((current) => {
+        if (current === null) return myUid; 
+        return; 
+      }, (error, committed) => {
+        if (committed) {
+          myScore += 100;
+          document.getElementById('my-score').innerText = myScore;
           
-          catchRef.transaction((current) => {
-            if (current === null) return myUid; 
-            return; 
-          }, (error, committed) => {
-            if (committed) {
-              myScore += 100;
-              document.getElementById('my-score').innerText = myScore;
-              
-              if (now - lastCatchTime < 3000) comboCount++; else comboCount = 1;
-              lastCatchTime = now;
-              
-              const pitchMultiplier = 1 + (comboCount * 0.15); 
-              playSound('catch', pitchMultiplier); 
-              showFloatingText(e.clientX, e.clientY, `🎯 내가 잡음! (+100)`, '#2ecc71');
+          if (now - lastCatchTime < 3000) comboCount++; else comboCount = 1;
+          lastCatchTime = now;
+          
+          const pitchMultiplier = 1 + (comboCount * 0.15); 
+          playSound('catch', pitchMultiplier); 
+          showLocalText(`🎯 내가 잡음! (+100)`, '#2ecc71');
 
-              if (comboCount >= 2) {
-                let text = "DOUBLE KILL!"; let color = "#f1c40f";
-                if (comboCount === 3) { text = "TRIPLE KILL!"; color = "#e67e22"; }
-                else if (comboCount >= 4) { text = "UNSTOPPABLE!!"; color = "#ff4757"; }
-                showFloatingCombo(e.clientX, e.clientY, text, color);
-              }
-
-              db.ref('rooms/' + currentRoomId + '/killLogs').push({ catcher: myUid });
-            } else {
-              showFloatingText(e.clientX, e.clientY, `앗! 남이 먼저 낚아챔`, '#e67e22');
-            }
-          });
-        }
-      } else {
-        playSound('miss'); comboCount = 0; 
-        life--; document.getElementById('life').innerText = life;
-        mapContainer.classList.add('shake-screen');
-        setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
-
-        if (life <= 0) { 
-          clearInterval(timerInterval); triggerGameOver("내 목숨 소진 ㅠㅠ"); 
-        } else { 
-          let hintMsg = "❌ 헛방!";
-          let hintColor = "#e74c3c";
-          if (minDistToAny !== Infinity) {
-            if (minDistToAny < 120) { hintMsg = `🔥 완전 뜨거움! (${Math.round(minDistToAny)}px)`; hintColor = "#ff4757"; }
-            else if (minDistToAny < 300) { hintMsg = `♨️ 따뜻함 (${Math.round(minDistToAny)}px)`; hintColor = "#ffa502"; }
-            // 💡 [수정됨] 헛방 쳤을 때 거리가 멀어도 픽셀 숫자가 출력됩니다!
-            else { hintMsg = `❄️ 아주 멉니다 (${Math.round(minDistToAny)}px)`; hintColor = "#747d8c"; }
+          if (comboCount >= 2) {
+            let text = "DOUBLE KILL!"; let color = "#f1c40f";
+            if (comboCount === 3) { text = "TRIPLE KILL!"; color = "#e67e22"; }
+            else if (comboCount >= 4) { text = "UNSTOPPABLE!!"; color = "#ff4757"; }
+            showFloatingCombo(e.clientX, e.clientY, text, color);
           }
-          showFloatingText(e.clientX, e.clientY, hintMsg, hintColor);
+
+          db.ref('rooms/' + currentRoomId + '/killLogs').push({ catcher: myUid });
+        } else {
+          showLocalText(`앗! 남이 먼저 낚아챔`, '#e67e22');
         }
+      });
+    }
+  } else {
+    // 헛방 로직
+    playSound('miss'); comboCount = 0; 
+    life--; document.getElementById('life').innerText = life;
+    mapContainer.classList.add('shake-screen');
+    setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+
+    if (life <= 0) { 
+      clearInterval(timerInterval); triggerGameOver("내 목숨 소진 ㅠㅠ"); 
+    } else { 
+      // 💡 1번 문제 해결: 기존 힌트 메시지 앞에 무조건 "❌ 헛방!" 이라는 글씨를 강제로 붙여줍니다.
+      let hintMsg = "❌ 헛방!";
+      let hintColor = "#e74c3c";
+      if (minDistToAny !== Infinity) {
+        if (minDistToAny < 120) { hintMsg = `❌ 헛방! (🔥완전 뜨거움!)`; hintColor = "#ff4757"; }
+        else if (minDistToAny < 300) { hintMsg = `❌ 헛방! (♨️따뜻함)`; hintColor = "#ffa502"; }
+        else { hintMsg = `❌ 헛방! (❄️아주 멉니다)`; hintColor = "#747d8c"; }
       }
-    });
+      showLocalText(hintMsg, hintColor);
+    }
+  }
+});
 
     async function triggerGameOver(reason) {
       mode = 'gameover';
