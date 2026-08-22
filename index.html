@@ -82,9 +82,14 @@
   <div id="ui">
     <div class="ui-group" style="font-weight:900; color:#3498db; font-size:16px;">🦎 웹챠 카멜레온</div>
 
-    <!-- 1. 탐색 모드 -->
+<!-- 1. 탐색 모드 -->
     <div id="ui-move" class="ui-group" style="display:none;">
       <span style="font-size:12px; color:#aaa;" id="overlap-warning">좌측:조이스틱 | 우측:스크롤</span>
+      
+      <!-- 👇 여기로 버튼 이동! -->
+      <input type="file" id="map-upload" accept="image/*" style="display:none;" onchange="window.loadCustomMap(event)">
+      <button class="btn-sub" id="btn-upload-map" onclick="document.getElementById('map-upload').click()" style="display:none;">🖼️ 사진으로 맵 변경</button>
+      
       <button class="btn-main" id="btn-copy" onclick="window.copyBackground()">📸 스캔 (Space)</button>
     </div>
     
@@ -97,6 +102,8 @@
       </div>
       <div class="control-box">
         투명도 <input type="range" id="opacity-slider" min="0.2" max="1" step="0.1" value="1" style="width:40px;">
+      </div> <!-- 💡 여기에 닫는 태그를 반드시 추가해야 합니다! -->
+      
       <!-- 2. 주차/편집 모드 UI 안에 추가 -->
       <div class="control-box">
         <button id="btn-shape" class="btn-sub" onclick="window.toggleShape()" style="font-size:14px;">🔲 모양</button>
@@ -107,6 +114,7 @@
         <button id="btn-picker" class="btn-sub" onclick="window.setTool('picker')">💧</button>
         <button id="btn-pen" class="btn-sub active-tool" onclick="window.setTool('pen')">🖌️</button>
         <button id="btn-eraser" class="btn-sub" onclick="window.setTool('eraser')">🧹</button>
+        <input type="text" id="taunt-input" placeholder="도발 문구">
         <button id="btn-text" class="btn-sub" onclick="window.setTool('text')">🔤</button>
         <input type="text" id="text-input" value="💩" style="width:30px; text-align:center;">
       </div>
@@ -253,8 +261,68 @@
     const penSizeSlider = document.getElementById('pen-size');
     const doodleCanvas = document.getElementById('doodle-canvas');
     const doodleCtx = doodleCanvas.getContext('2d');
-    
-    let mode = 'move'; 
+
+
+    // 전역 변수에 커스텀 맵 데이터 저장용 추가
+    let customMapBase64 = null;
+
+    // 💡 이미지 업로드 및 압축 로직
+    window.loadCustomMap = (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = () => {
+          // 용량 최적화를 위해 임시 캔버스에서 리사이즈/압축 (Firebase 과부하 방지)
+          const tempCanvas = document.createElement('canvas');
+          const maxW = 1080; // 최대 가로 픽셀
+          const scale = maxW / img.width;
+          tempCanvas.width = maxW;
+          tempCanvas.height = img.height * scale;
+          const tCtx = tempCanvas.getContext('2d');
+          tCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
+          
+          // 압축된 JPEG로 변환
+          customMapBase64 = tempCanvas.toDataURL('image/jpeg', 0.6);
+          
+          // 방장: Firebase에 커스텀 맵 데이터 전송
+          if (db) {
+            db.ref('rooms/' + currentRoomId + '/customMap').set(customMapBase64);
+          }
+          applyCustomMap(customMapBase64);
+        };
+      };
+      reader.readAsDataURL(file);
+    };
+
+    function applyCustomMap(base64Image) {
+      const img = new Image();
+      img.src = base64Image;
+      img.onload = () => {
+        // 맵 비율을 업로드한 이미지에 맞춤
+        const ratio = img.height / img.width;
+        bgCanvas.width = scrollWrapper.clientWidth * dpr;
+        bgCanvas.height = (scrollWrapper.clientWidth * ratio) * dpr;
+        mapContainer.style.height = `${scrollWrapper.clientWidth * ratio}px`;
+        
+        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+        bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
+      };
+    }
+    let mode = 'move';
+    // 💡 [추가] 새로고침/뒤로가기 방지용 플래그
+    let isIntentional = false; 
+
+    window.addEventListener('beforeunload', (e) => {
+      // 게임오버 상태가 아니고, 우리가 의도적으로 페이지를 넘기는 게 아닐 때만 경고창!
+      if (mode !== 'gameover' && !isIntentional) {
+        e.preventDefault();
+        e.returnValue = ''; // 크롬/사파리에서 경고창을 띄우기 위한 필수 설정
+      }
+    });
     let pX, pY, pWidth = 120, pHeight = 60;
     let vX = 0, vY = 0, rotation = 0;
     const speed = 4;
@@ -890,21 +958,101 @@
       }
     }
 
-    function showShareScreen(count) {
+    // 💡 레디 시스템용 전역 변수 추가
+    const myUid = Math.random().toString(36).substr(2, 9);
+    let isReady = false;
+    let countdownTimer = null;
+    let countdown = 5;
+
+    function showShareScreen(initialCount) {
       mode = 'share';
       document.getElementById('ui-edit').style.display = 'none';
       document.getElementById('ui-share').style.display = 'flex';
       
-      const isHost = localStorage.getItem('isHost_' + currentRoomId) === 'true';
-      if (isHost) {
-        document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (방장: 언제든 시작 가능)`;
-        document.getElementById('btn-start-seek').style.display = 'inline-block';
-      } else {
-        document.getElementById('room-status-text').innerText = `현재 ${count}명 숨음! (방장 대기중...)`;
-        document.getElementById('btn-start-seek').style.display = 'none'; 
-      }
+      // 기존 강제시작 버튼을 '레디' 버튼으로 덮어쓰기
+      const readyBtn = document.getElementById('btn-start-seek');
+      readyBtn.innerText = '✔️ 준비 (레디)';
+      readyBtn.onclick = window.toggleReady; 
+      readyBtn.style.display = 'inline-block'; 
 
       if (isMobile) { actionBtn.style.display = 'none'; }
+
+      // 💡 Firebase 실시간 동기화 (과반수 레디 감지)
+      if (db) {
+        let totalHidden = initialCount;
+        let readyCount = 0;
+
+        // 1. 숨은 총 인원 실시간 감지
+        db.ref('rooms/' + currentRoomId + '/list').on('value', snap => {
+          totalHidden = snap.val() ? snap.val().length : 0;
+          updateReadyUI(totalHidden, readyCount);
+        });
+
+        // 2. 레디한 인원 실시간 감지
+        db.ref('rooms/' + currentRoomId + '/ready').on('value', snap => {
+          readyCount = snap.val() ? Object.keys(snap.val()).length : 0;
+          updateReadyUI(totalHidden, readyCount);
+        });
+      }
+    }
+
+    // 💡 레디 버튼 클릭 시 실행되는 함수
+    window.toggleReady = () => {
+      if (!db) {
+        // 인터넷 연결 문제 등으로 로컬 모드일 경우 바로 시작
+        location.href = `${location.origin}${location.pathname}?room=${currentRoomId}&mode=seek`;
+        return;
+      }
+      
+      isReady = !isReady;
+      const readyBtn = document.getElementById('btn-start-seek');
+      
+      if (isReady) {
+        readyBtn.innerText = '❌ 준비 취소';
+        readyBtn.style.background = '#95a5a6'; // 취소 느낌의 회색
+        db.ref('rooms/' + currentRoomId + '/ready/' + myUid).set(true);
+      } else {
+        readyBtn.innerText = '✔️ 준비 (레디)';
+        readyBtn.style.background = '#e74c3c'; // 다시 원래 빨간색
+        db.ref('rooms/' + currentRoomId + '/ready/' + myUid).remove();
+      }
+    };
+
+    // 💡 UI 업데이트 및 5초 카운트다운 로직
+    function updateReadyUI(totalHidden, readyCount) {
+      const statusText = document.getElementById('room-status-text');
+      
+      // 과반수 기준 계산 (1명이면 1명, 2명이면 2명, 3명이면 2명, 4명이면 3명 필요)
+      const threshold = Math.max(1, Math.floor(totalHidden / 2) + 1);
+      
+      let baseMsg = `현재 ${totalHidden}명 주차! (레디: ${readyCount} / ${threshold}명 필요)`;
+
+      if (readyCount >= threshold) {
+        if (!countdownTimer) {
+          countdown = 5;
+          playSound('shutter'); // 카운트 시작 효과음
+          countdownTimer = setInterval(() => {
+            countdown--;
+            if (countdown <= 0) {
+              clearInterval(countdownTimer);
+              // 카운트가 0이 되면 누구나 상태를 seek으로 바꿈 -> 방 안의 전원 동시 시작!
+              db.ref('rooms/' + currentRoomId + '/status').set('seek');
+            } else {
+              statusText.innerText = `${baseMsg} ⏳ ${countdown}초 뒤 시작!`;
+            }
+          }, 1000);
+        }
+        statusText.innerText = `${baseMsg} ⏳ ${countdown}초 뒤 시작!`;
+        statusText.style.color = '#f1c40f'; // 긴장감 있는 노란색으로 강조
+      } else {
+        // 누군가 레디를 풀어서 과반수가 깨지면 타이머 즉시 취소
+        if (countdownTimer) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+        }
+        statusText.innerText = baseMsg;
+        statusText.style.color = '#2ecc71'; // 평화로운 초록색
+      }
     }
 
     window.copyLink = () => {
@@ -912,16 +1060,6 @@
       navigator.clipboard.writeText(shareUrl).then(() => alert("방 링크 복사 완료! (친구들에게 보내세요)"));
     };
 
-    window.startPartySeek = () => {
-      // 💡 숨은 인원이 적을 때 방장에게 경고
-      const currentCount = existingHiders ? existingHiders.length : 0;
-      if (currentCount < 2) {
-        if (!confirm(`현재 ${currentCount}명만 주차를 완료했습니다.\n지금 시작하면 늦은 사람은 참여할 수 없습니다. 진짜 시작할까요?`)) return;
-      }
-      
-      if (db) { db.ref('rooms/' + currentRoomId + '/status').set('seek'); }
-      location.href = `${location.origin}${location.pathname}?room=${currentRoomId}&mode=seek`;
-    };
 
     // ==========================================
     // 🕵️ 술래 모드 (경쟁 색출 및 트롤 수신)
@@ -939,7 +1077,9 @@
       if (roomData) {
         mode = 'seek';
         currentMapIndex = roomData.mapIndex;
-        renderMap();
+        if (roomData.customMap) applyCustomMap(roomData.customMap);
+        else renderMap();
+        
         localPlayer.style.display = 'none';
 
         existingHiders = roomData.list || [];
@@ -1017,7 +1157,9 @@
           }
         }, 1000);
       } else {
-        alert("데이터를 찾을 수 없습니다."); location.href = location.pathname;
+        alert("데이터를 찾을 수 없습니다."); 
+        isIntentional = true; // 💡 여기 추가!
+        location.href = location.pathname;
       }
     }
 
@@ -1214,7 +1356,8 @@
         if (db) {
           db.ref('rooms/' + id + '/status').on('value', snap => {
             if (snap.val() === 'seek') {
-              alert("🚨 방장이 게임을 시작했습니다! 모두 색출 작전에 투입됩니다!");
+              alert("🚨 게임이 시작되었습니다! 모두 색출 작전에 투입됩니다!");
+              isIntentional = true; // 💡 여기 추가!
               location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
             }
           });
@@ -1222,11 +1365,27 @@
 
         currentMapIndex = roomData.mapIndex;
         existingHiders = roomData.list || [];
-        renderMap();
+        
+        // 💡 방장이면 사진 업로드 버튼 보여주기
+        if (localStorage.getItem('isHost_' + id) === 'true') {
+          document.getElementById('btn-upload-map').style.display = 'inline-block';
+        }
+
+        if (roomData.customMap) applyCustomMap(roomData.customMap);
+        else renderMap();
+
+        // 💡 핵심: 방장이 실시간으로 사진을 올리면 다른 유저들의 화면도 바로 바뀌도록 리스너 추가!
+        if (db) {
+          db.ref('rooms/' + id + '/customMap').on('value', snap => {
+            if (snap.exists()) applyCustomMap(snap.val());
+          });
+        }
 
         existingHiders.forEach((data) => {
           const el = document.createElement('div');
-          el.className = 'player-obj copied breathing';
+          const applyShape = data.shape ? data.shape : 'rect';
+          el.className = `player-obj copied breathing shape-${applyShape}`;
+          
           el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
           el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
           el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
@@ -1250,6 +1409,9 @@
         
         if (existingHiders.length >= 9) {
           alert("방이 꽉 찼습니다! (최대 9명) 술래 모드로 자동 시작됩니다.");
+          if (db) db.ref('rooms/' + id + '/status').set('seek');
+          
+          isIntentional = true; // 💡 여기 추가!
           location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
           return;
         }
