@@ -1015,7 +1015,7 @@
       }
     }
 
-    async function async function initJoinHider(id) {
+    async function initJoinHider(id) {
       let roomData = null;
       if (db) {
         const snap = await db.ref('rooms/' + id).once('value');
@@ -1055,8 +1055,6 @@
           }
           mapContainer.appendChild(el);
         });
-
-        // 💡 괄호 꼬임 에러 및 중복 코드 제거 완료!
 
         if (localStorage.getItem('hidden_' + id)) {
           alert("이미 이 방에 위장하셨습니다! 친구들을 기다리거나 술래를 시작하세요.");
