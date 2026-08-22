@@ -10,6 +10,11 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <style>
+    /* 💡 위장 모양 (Shape) 클래스 */
+    .shape-rect { border-radius: 0; clip-path: none; }
+    .shape-circle { border-radius: 50%; }
+    .shape-pill { border-radius: 50px; }
+    .shape-rhombus { clip-path: polygon(15% 0, 100% 0, 85% 100%, 0% 100%); }
     body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; }
     
     #ui { flex-shrink: 0; padding: 8px 12px; display: flex; gap: 10px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; align-items: center; background: #222; border-bottom: 3px solid #444; z-index: 50; box-sizing: border-box; scrollbar-width: none; }
@@ -92,6 +97,9 @@
       </div>
       <div class="control-box">
         투명도 <input type="range" id="opacity-slider" min="0.2" max="1" step="0.1" value="1" style="width:40px;">
+      <!-- 2. 주차/편집 모드 UI 안에 추가 -->
+      <div class="control-box">
+        <button id="btn-shape" class="btn-sub" onclick="window.toggleShape()" style="font-size:14px;">🔲 모양</button>
       </div>
       <div class="control-box">
         <input type="color" id="doodle-color" value="#000000" style="padding:0; width:22px; height:22px; border-radius:4px;">
@@ -218,6 +226,21 @@
     }
 
     let comboCount = 0; let lastCatchTime = 0; let myScore = 0;
+    let currentShape = 'rect';
+    const shapeTypes = ['rect', 'circle', 'pill', 'rhombus'];
+    const shapeIcons = {'rect':'🔲', 'circle':'🟡', 'pill':'💊', 'rhombus':'🔺'};
+
+    window.toggleShape = () => {
+      if(mode !== 'edit') return;
+      let idx = shapeTypes.indexOf(currentShape);
+      currentShape = shapeTypes[(idx + 1) % shapeTypes.length];
+      
+      document.getElementById('btn-shape').innerText = shapeIcons[currentShape] + ' 모양';
+      
+      // 기존 클래스를 유지하면서 모양 클래스만 교체
+      localPlayer.className = `player-obj copied shape-${currentShape}`;
+      if (vX !== 0 || vY !== 0) localPlayer.classList.add('walking');
+    };
 
     const scrollWrapper = document.getElementById('scroll-wrapper');
     const mapContainer = document.getElementById('map-container');
@@ -243,7 +266,7 @@
     let roomSeed = 1;
     let existingHiders = [];
 
-    const MAP_HEIGHT = 2500; 
+    const MAP_HEIGHT = 5000; 
     const dpr = window.devicePixelRatio || 1;
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     
@@ -269,7 +292,7 @@
         bgCtx.fillStyle = '#555'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('게임마스터 • 2026. 8. 22.', 65, cy+15); cy += 60;
 
         const texts = ["안녕하세요! 오늘은 화제의 게임 웹챠 카멜레온을 해봤습니다.", "처음엔 단순한 줄 알았는데, 심리전이 장난 아니네요.", "텍스트 사이에 교묘하게 숨는 유저들을 보면 감탄이 나옵니다.", "하이퍼링크 사이에 숨으면 진짜 눈 부릅뜨고 찾아야 해요.", "스크린샷을 보시면 아시겠지만 보호색이 핵심입니다.", "친구들과 9인팟으로 꼭 해보시길 강력 추천합니다!"];
-        for(let i=0; i<30; i++) {
+        for(let i=0; i<60; i++) {
           bgCtx.fillStyle = '#f1f2f6'; bgCtx.fillRect(20, cy, w-40, 200); 
           bgCtx.fillStyle = '#aaa'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('이미지 불러오는 중...', w/2 - 60, cy+105); cy += 230;
           for(let j=0; j<6; j++) {
@@ -293,7 +316,7 @@
 
         const newsText = ["최근 출시된 웹 기반 멀티플레이 게임 '웹챠 카멜레온'이", "폭발적인 인기를 끌고 있다. 이 게임은 유저가 배경을 캡처해", "자신을 위장하는 독특한 시스템을 갖추고 있다.", "전문가들은 '인간의 착시를 이용한 심리전'을 성공 요인으로 꼽았다.", "텍스트가 밀집된 구간에서 위장할 경우, 시선을 완벽히 회피해", "명당으로 불리고 있다.", "개발진은 텍스트 맵을 추가해 난이도를 높일 계획이다.", "일부 유저들은 '시력 검사 게임이냐'는 불만을 토로하기도 했다.", "그럼에도 동시 접속자 수는 최고치를 경신 중이다."];
         bgCtx.fillStyle = '#222'; bgCtx.font = '17px serif';
-        for(let i=0; i<60; i++) {
+        for(let i=0; i<120; i++) {
           newsText.forEach(txt => { bgCtx.fillText(txt, 20, cy); cy += 32; }); cy += 20;
           if(i % 3 === 0) {
             bgCtx.fillStyle = '#f8f9fa'; bgCtx.fillRect(20, cy, w-40, 80);
@@ -310,7 +333,7 @@
         bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 24px serif'; bgCtx.fillText('제 42화. 보이지 않는 적', 20, cy); cy += 60;
         const novelLines = ["사방이 고요했다.", "적막 속에서 그는 조심스럽게 마우스를 쥐었다.", "\"분명히 이 근처에 숨어있을 텐데...\"", "화면에는 빼곡한 글씨들만이 가득할 뿐이었다.", "그때였다. 시야 구석에서 미세한 떨림이 포착된 것은.", "\"찾았다!\"", "그는 확신에 찬 비명을 지르며 화면을 클릭했다.", "하지만 들려온 것은 둔탁한 헛방 소리뿐이었다.", "\"...어떻게 저렇게 완벽하게 위장할 수가 있지?\"", "텍스트들은 처음부터 그 자리에 있던 것처럼 자연스러웠다.", "등줄기를 타고 식은땀이 흘렀다. 시간은 줄어들고 있었다."];
         bgCtx.fillStyle = '#222'; bgCtx.font = '18px serif';
-        for(let i=0; i<80; i++) { novelLines.forEach(line => { bgCtx.fillText(line, 25, cy); cy += 38; }); cy += 20; }
+        for(let i=0; i<160; i++) { novelLines.forEach(line => { bgCtx.fillText(line, 25, cy); cy += 38; }); cy += 20; }
       },
       function drawStackOverflow() {
         let w = bgCanvas.width/dpr;
@@ -325,7 +348,7 @@
         bgCtx.fillText('I am playing this web game and I cannot find it.', 20, cy); cy += 25;
         bgCtx.fillText('Does anyone have a script to detect it?', 20, cy); cy += 30;
 
-        for(let i=0; i<15; i++) {
+        for(let i=0; i<30; i++) {
           bgCtx.fillStyle = '#f6f6f6'; bgCtx.beginPath(); bgCtx.roundRect(20, cy, w-40, 140, 5); bgCtx.fill();
           bgCtx.fillStyle = '#2f3337'; bgCtx.font = '14px monospace';
           bgCtx.fillText('function scanScreen() {', 35, cy+25);
@@ -342,7 +365,7 @@
         bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
         bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 24px sans-serif'; bgCtx.fillText('서비스 이용약관', 20, 50);
         let cy = 100; bgCtx.fillStyle = '#555'; bgCtx.font = '14px sans-serif';
-        for(let i=1; i<=100; i++) {
+        for(let i=1; i<=200; i++) {
           bgCtx.font = 'bold 15px sans-serif'; bgCtx.fillStyle = '#333';
           bgCtx.fillText(`제 ${i} 조 (목적 및 정의)`, 20, cy); cy += 25;
           bgCtx.font = '14px sans-serif'; bgCtx.fillStyle = '#666';
@@ -372,7 +395,7 @@
 
         const wikiWords = ['술래가', '눈을', '감고', '숫자를', '세는', '동안', '다른', '사람들이', '숨고,', '그', '이후', '술래가', '숨은', '사람들을', '찾아내는', '전통적인', '놀이이다.', '최근에는', '인터넷', '환경에서', '보호색을', '이용한', '웹챠', '카멜레온과', '같은', '형태로', '발전하였다.'];
         bgCtx.font = '16px sans-serif';
-        for(let j=1; j<=20; j++) {
+        for(let j=1; j<=40; j++) {
           bgCtx.fillStyle = '#000'; bgCtx.font = '24px serif'; bgCtx.fillText(`${j}. 내용`, 20, cy); cy += 15;
           bgCtx.strokeStyle = '#ddd'; bgCtx.beginPath(); bgCtx.moveTo(20,cy); bgCtx.lineTo(w-20,cy); bgCtx.stroke(); cy += 25;
           bgCtx.font = '16px sans-serif';
@@ -398,7 +421,7 @@
         let cy = 80;
         bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 22px sans-serif'; bgCtx.fillText('상품 Q&A (9,999건)', 20, cy); cy += 40;
 
-        for(let i=0; i<30; i++) {
+        for(let i=0; i<60; i++) {
           bgCtx.fillStyle = '#333'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('Q. 배송은 언제쯤 되나요?', 20, cy); cy += 25;
           bgCtx.fillStyle = '#777'; bgCtx.font = '13px sans-serif'; bgCtx.fillText('user_*** | 2026.08.22', 20, cy); cy += 25;
           bgCtx.fillStyle = '#f4f4f4'; bgCtx.fillRect(20, cy, w-40, 60);
@@ -420,7 +443,7 @@
         bgCtx.fillStyle = '#f4f4f4'; bgCtx.fillRect(0, cy, w, 40);
         bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('전체 댓글 145개', 20, cy+25); cy += 60;
 
-        for(let i=0; i<40; i++) {
+        for(let i=0; i<80; i++) {
           let isReply = seededRandom() > 0.7; let x = isReply ? 40 : 20;
           bgCtx.fillStyle = '#333'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText(isReply ? 'ㄴ ㅇㅇ(211.36)' : 'ㅇㅇ(14.32)', x, cy);
           bgCtx.fillStyle = '#888'; bgCtx.font = '12px sans-serif'; bgCtx.fillText('10:25', x + 100, cy); cy += 20;
@@ -438,7 +461,7 @@
         let cy = 120;
         bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 30px sans-serif'; bgCtx.fillText('카멜레온, 어디까지 숨어봤니?', 20, cy); cy += 50;
         
-        for(let i=0; i<15; i++) {
+        for(let i=0; i<30; i++) {
           bgCtx.fillStyle = '#ff6b00'; bgCtx.font = '20px sans-serif'; bgCtx.fillText('🦔 고슴이가 알려줄게!', 20, cy); cy += 35;
           bgCtx.fillStyle = '#333'; bgCtx.font = '16px sans-serif';
           bgCtx.fillText('요즘 유행하는 텍스트 위장 게임 아시나요?', 20, cy); cy += 28;
@@ -456,7 +479,7 @@
         bgCtx.fillStyle = '#252526'; bgCtx.fillRect(0, 0, 50, MAP_HEIGHT);
         let cy = 40; bgCtx.font = '16px monospace';
         const code = ["function findChameleon(target) {", "  const players = Array.from(document.querySelectorAll('.player'));", "  return players.filter(p => {", "    if (p.style.opacity === '0') {", "      console.log('Hidden player detected!');", "      return true;", "    }", "    return false;", "  });", "}", " ", "async function initGame() {", "  const isReady = await checkServer();", "  if (!isReady) throw new Error('Timeout');", "}"];
-        for(let i=0; i<80; i++) {
+        for(let i=0; i<160; i++) {
           bgCtx.fillStyle = '#858585'; bgCtx.fillText(String(i+1), 15, cy);
           code.forEach(line => {
             let cx = 70;
@@ -475,7 +498,7 @@
         let w = bgCanvas.width/dpr;
         bgCtx.fillStyle = '#bacee0'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
         let cy = 50;
-        for(let i=0; i<50; i++) {
+        for(let i=0; i<100; i++) {
           let isMe = seededRandom() > 0.5;
           bgCtx.fillStyle = isMe ? '#ffeb33' : '#fff';
           const msgs = ["야 카멜레온 들어와", "링크 보냄 ㄱㄱ", "어디 숨었냐 진짜 안보이네", "힌트좀 주라", "ㅋㅋㅋㅋㅋㅋ 나 방금 개쩌는곳 찾음", "아 눈아파", "야 빨리 찾아 시간없어"];
@@ -498,7 +521,7 @@
         let cy = 120; bgCtx.font = '15px monospace';
         bgCtx.fillText('품명                단가   수량   금액', 20, cy); cy += 20;
         bgCtx.fillText('--------------------------------------', 20, cy); cy += 30;
-        for(let i=0; i<60; i++) {
+        for(let i=0; i<120; i++) {
           bgCtx.fillText('위장용 투명 망토     9,900    1   9,900', 20, cy); cy += 25;
           bgCtx.fillText('매의 눈 안약        4,500    2   9,000', 20, cy); cy += 25;
           bgCtx.fillText('도발용 확성기       1,500    5   7,500', 20, cy); cy += 25;
@@ -511,10 +534,10 @@
         let w = bgCanvas.width/dpr;
         bgCtx.fillStyle = '#0c0c0c'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
         let cy = 40; bgCtx.font = '14px monospace';
-        for(let i=0; i<100; i++) {
+        for(let i=0; i<200; i++) {
           bgCtx.fillStyle = '#00ff00'; bgCtx.fillText('admin@webcha:~$ ', 15, cy);
           bgCtx.fillStyle = '#cccccc'; bgCtx.fillText('tail -f /var/log/syslog', 140, cy); cy += 25;
-          for(let j=0; j<5; j++) {
+          for(let j=0; j<10; j++) {
             bgCtx.fillStyle = '#888888'; bgCtx.fillText('[2026-08-22 16:13:16]', 15, cy);
             bgCtx.fillStyle = seededRandom() > 0.9 ? '#ff5555' : '#cccccc';
             let log = [" INFO Request handled successfully in 42ms", " WARN Target not found in sector 7G", " ERROR Connection refused by host", " DEBUG Checking packet sequence #4492", " FATAL Out of memory allocating grid"];
@@ -530,7 +553,7 @@
         bgCtx.fillText('보호색 메커니즘이 인지 피로도에 미치는 영향', w/2, 60); bgCtx.textAlign = 'left';
         let cy = 120; bgCtx.font = '14px serif'; bgCtx.fillStyle = '#333';
         const txt = "본 연구는 디지털 환경에서 텍스트와 배경색의 일치도가 사용자의 시각적 탐색 속도에 미치는 영향을 분석하였다. 실험 결과, 명도 대비가 5% 미만일 때 오류율이 급증하였으며, 특히 밀집된 텍스트 사이에서는 착시 현상이 발생하여 목표물을 인지하는 데 걸리는 시간이 평균 3.4배 증가하였다. 이는 웹챠 카멜레온과 같은 시스템에서 생존율을 높이는 핵심 요인으로 작용한다.";
-        for(let i=0; i<40; i++) {
+        for(let i=0; i<80; i++) {
           bgCtx.font = 'bold 16px serif'; bgCtx.fillText(`${i+1}. 서론 및 연구 배경`, 20, cy); cy += 30;
           bgCtx.font = '14px serif';
           let tempCy = cy;
@@ -546,7 +569,7 @@
         let w = bgCanvas.width/dpr;
         bgCtx.fillStyle = '#fdfdfd'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
         let cy = 50;
-        for(let i=0; i<40; i++) {
+        for(let i=0; i<80; i++) {
           bgCtx.fillStyle = '#c0392b'; bgCtx.font = 'bold 24px serif'; bgCtx.fillText('카멜레온', 20, cy);
           bgCtx.fillStyle = '#7f8c8d'; bgCtx.font = '16px sans-serif'; bgCtx.fillText('[ca·me·le·on]', 120, cy); cy += 30;
           bgCtx.fillStyle = '#2980b9'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('명사', 20, cy); cy += 25;
@@ -564,7 +587,7 @@
         bgCtx.fillStyle = '#f1f3f4'; bgCtx.fillRect(0, 0, w, 60);
         bgCtx.fillStyle = '#d93025'; bgCtx.font = 'bold 22px sans-serif'; bgCtx.fillText('M Gmail', 20, 38);
         let cy = 90;
-        for(let i=0; i<35; i++) {
+        for(let i=0; i<70; i++) {
           bgCtx.fillStyle = i < 3 ? '#f2f6fc' : '#fff';
           bgCtx.fillRect(0, cy-25, w, 50);
           bgCtx.fillStyle = i < 3 ? '#202124' : '#5f6368';
@@ -838,7 +861,8 @@
     const myData = {
       pX: pX, pY: pY, pWidth: pWidth, pHeight: pHeight, rotation: rotation,
       opacity: opacitySlider.value, 
-      hasEye: eyeCheck, // 수정된 부분
+      hasEye: eyeCheck, 
+      shape: currentShape, // 💡 모양 데이터 추가!
       image: mergedCanvas.toDataURL(),
       taunt: tauntMessage
     };
@@ -924,10 +948,11 @@
         document.getElementById('ui-seek').style.display = 'flex';
         if (isMobile) { actionBtn.style.display = 'none'; }
 
-        existingHiders.forEach((data, idx) => {
+        existingHiders.forEach((data) => {
           const el = document.createElement('div');
-          el.className = 'player-obj copied breathing target-obj';
-          el.id = `target-${idx}`;
+          
+          const applyShape = data.shape ? data.shape : 'rect';
+          el.className = `player-obj copied breathing shape-${applyShape}`;
           el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
           el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
           el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
