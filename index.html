@@ -10,6 +10,11 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <style>
+    /* 💡 위장 모양 (Shape) 클래스 */
+    .shape-rect { border-radius: 0; clip-path: none; }
+    .shape-circle { border-radius: 50%; }
+    .shape-pill { border-radius: 50px; }
+    .shape-rhombus { clip-path: polygon(15% 0, 100% 0, 85% 100%, 0% 100%); }
     body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; }
     
     /* 가로 스와이프 가능한 툴바 */
@@ -17,9 +22,7 @@
       flex-shrink: 0; padding: 8px 12px; display: flex; gap: 15px; 
       flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; 
       align-items: center; background: #222; border-bottom: 3px solid #444; 
-      z-index: 50; box-sizing: border-box;
-      width: 100%;
-      scrollbar-width: none;
+      z-index: 50; box-sizing: border-box; scrollbar-width: none; width: 100%;
     }
     #ui::-webkit-scrollbar { display: none; }
     
@@ -33,7 +36,7 @@
     .btn-sub { background: #555; color: white; }
     .active-tool { border: 2px solid #ffd32a !important; background: #666 !important; color: #ffd32a; }
 
-    .control-box { display: flex; align-items: center; gap: 4px; background: #333; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; }
+    .control-box { display: flex; align-items: center; gap: 4px; background: #333; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; color: #ddd; }
     .rot-btn { background: #555; color: white; padding: 2px 8px; border-radius: 4px; font-size: 16px; border: none; }
     
     #taunt-input { width: 130px; padding: 5px; background: #fff; color: #111; border: 2px solid #e74c3c; }
@@ -41,14 +44,14 @@
     #scroll-wrapper { flex-grow: 1; position: relative; overflow-y: auto; overflow-x: auto; width: 100%; background: #fff; }
     
     #map-container { position: relative; 
-      width: 1000px; /* 💡 핵심: 어떤 기기든 가로 크기를 1000px로 강제 고정! */
+      width: 1000px; /* 💡 맵 가로크기 강제 고정 (PC/모바일 동기화) */
       height: 5000px; 
       cursor: crosshair; 
     }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
     .player-obj { position: absolute; transform: translate(-50%, -50%); z-index: 5; box-sizing: border-box; display: flex; justify-content: center; align-items: center; background-size: 100% 100%; background-repeat: no-repeat; pointer-events: none; }
-    #local-player { outline: 2px dashed #e74c3c; outline-offset: -2px; background-color: rgba(231, 76, 60, 0.1); }
+    #local-player { outline: 2px dashed #e74c3c; outline-offset: -2px; background-color: rgba(231, 76, 60, 0.1); z-index: 999 !important; }
     
     #resize-handle { position: absolute; right: -15px; bottom: -15px; width: 30px; height: 30px; background: #f1c40f; border: 2px solid #222; border-radius: 50%; cursor: se-resize; z-index: 25; pointer-events: auto; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
 
@@ -61,8 +64,11 @@
     .walking { animation: waddle 0.25s infinite alternate; }
     @keyframes waddle { 0% { margin-left: -2px; } 100% { margin-left: 2px; } }
 
-    .breathing { box-shadow: none !important; animation: breath 5s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
-    @keyframes breath { 0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)); } 50% { transform: translate(-50%, calc(-50% - 1px)) rotate(var(--rot)); } }
+    .breathing { box-shadow: none !important; animation: breath 3s infinite ease-in-out; pointer-events: auto !important; cursor: crosshair !important; }
+    @keyframes breath { 
+      0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); opacity: 1; } 
+      50% { transform: translate(-50%, calc(-50% - 2px)) rotate(var(--rot)) scale(1.02); opacity: 0.9; } 
+    }
 
     .jelly-busted { position: absolute; font-size: 45px; z-index: 7; transform: translate(-50%, -50%); animation: popOut 0.3s forwards, tremble 0.1s infinite 0.3s; pointer-events: none; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
     @keyframes popOut { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
@@ -113,6 +119,11 @@
 
     <div id="ui-move" class="ui-group" style="display:none;">
       <span style="font-size:12px; color:#aaa;" id="overlap-warning">좌측:조이스틱 | 우측:스크롤</span>
+      
+      <!-- 💡 방장 전용: 맵 업로드 버튼 -->
+      <input type="file" id="map-upload" accept="image/*" style="display:none;" onchange="window.loadCustomMap(event)">
+      <button class="btn-sub" id="btn-upload-map" onclick="document.getElementById('map-upload').click()" style="display:none;">🖼️ 사진으로 맵 변경</button>
+
       <button class="btn-main" id="btn-copy" onclick="window.copyBackground()">📸 스캔 (Space)</button>
     </div>
     
@@ -124,20 +135,28 @@
         <button class="rot-btn" onclick="window.adjustRot(1)">+</button>
       </div>
       <div class="control-box">
-        굵기 <input type="range" id="pen-size" min="1" max="30" value="3" style="width:50px;">
+        투명도 <input type="range" id="opacity-slider" min="0.2" max="1" step="0.1" value="1" style="width:40px;">
       </div>
-      <input type="color" id="doodle-color" value="#000000" style="padding:1px; width:26px; height:26px;">
-      <button id="btn-picker" class="btn-sub" onclick="window.setTool('picker')">💧스포이드</button>
-      <button id="btn-pen" class="btn-sub active-tool" onclick="window.setTool('pen')">🖌️펜</button>
-      <button id="btn-eraser" class="btn-sub" onclick="window.setTool('eraser')">🧹</button>
-      <button class="btn-sub" onclick="window.toggleEye()">👀</button>
+      <div class="control-box">
+        <button id="btn-shape" class="btn-sub" onclick="window.toggleShape()" style="font-size:14px;">🔲 모양</button>
+      </div>
+      <div class="control-box">
+        <input type="color" id="doodle-color" value="#000000" style="padding:1px; width:26px; height:26px;">
+        <input type="range" id="pen-size" min="1" max="30" value="3" style="width:50px;">
+        <button id="btn-picker" class="btn-sub" onclick="window.setTool('picker')">💧스포이드</button>
+        <button id="btn-pen" class="btn-sub active-tool" onclick="window.setTool('pen')">🖌️펜</button>
+        <button id="btn-eraser" class="btn-sub" onclick="window.setTool('eraser')">🧹</button>
+        <button class="btn-sub" onclick="window.toggleEye()">👀</button>
 
-      <input type="text" id="taunt-input" placeholder="인성질 멘트" maxlength="20">
-      <button class="btn-action" id="btn-hide" onclick="window.finishHiding()">🤫 주차 (Space)</button>
+        <input type="text" id="taunt-input" placeholder="인성질 멘트" maxlength="20">
+        <button class="btn-action" id="btn-hide" onclick="window.finishHiding()">🤫 주차 (Space)</button>
+      </div>
     </div>
 
     <div id="ui-share" class="ui-group" style="display:none;">
       <span id="room-status-text" style="color:#2ecc71; font-size:13px; font-weight:bold;"></span>
+      <button class="btn-sub" onclick="window.sendTroll('fart')">💨 방귀</button>
+      <button class="btn-sub" onclick="window.sendTroll('laugh')">👻 도발</button>
       <button class="btn-main" onclick="window.copyLink()">🔗 방 링크 복사</button>
       <button class="btn-action" id="btn-start-seek" onclick="window.toggleReady()">✔️ 준비 (레디)</button>
     </div>
@@ -159,7 +178,7 @@
     <div id="leaderboard-box" style="background:#222; padding:15px; border-radius:8px; margin-bottom:15px; color:white; text-align:left; max-height:40vh; overflow-y:auto; width:100%; box-sizing:border-box;">
        <!-- 순위가 여기에 채워집니다 -->
     </div>
-    <button class="btn-main" onclick="location.href=location.pathname" style="width:100%; padding:14px; font-size:16px; font-weight:bold; border-radius:8px;">🔄 새 게임 만들기</button>
+    <button class="btn-main" onclick="isIntentional=true; location.href=location.pathname" style="width:100%; padding:14px; font-size:16px; font-weight:bold; border-radius:8px;">🔄 새 게임 만들기</button>
   </div>
 
   <div id="scroll-wrapper">
@@ -179,6 +198,9 @@
   <div id="mobile-action-btn">📸</div>
 
   <script>
+    // ==========================================
+    // 💡 Firebase V8 안정화 버전 연동
+    // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyDYmOC4OiW90_8ee0ndpO6xSRSBKJENlws",
       authDomain: "webcchachameleon.firebaseapp.com",
@@ -248,9 +270,36 @@
       }
     }
 
+    // ==========================================
+    // 💡 전역 변수 (단 한번만 선언!)
+    // ==========================================
+    let mode = 'move'; 
+    let pX, pY, pWidth = 100, pHeight = 60;
+    let vX = 0, vY = 0, rotation = 0;
+    const speed = 4;
+    let keys = {};
+    let life = 3, timeLeft = 180, timerInterval; // 시간 180초로 복구
+    
+    let currentRoomId = null;
+    let currentMapIndex = 0;
+    let roomSeed = 1;
+    let existingHiders = [];
+    let tauntMessage = "";
+    
+    // 내 고유 식별자(UID) 발급 (익명_abc 형태)
+    const myUid = Math.random().toString(36).substr(2, 4);
+    let customMapBase64 = null;
+    
     let comboCount = 0;
     let lastCatchTime = 0;
     let myScore = 0;
+
+    let currentShape = 'rect';
+    const shapeTypes = ['rect', 'circle', 'pill', 'rhombus'];
+    const shapeIcons = {'rect':'🔲', 'circle':'🟡', 'pill':'💊', 'rhombus':'🔺'};
+    
+    // 💡 새로고침/뒤로가기 방지용 플래그
+    let isIntentional = false; 
 
     const scrollWrapper = document.getElementById('scroll-wrapper');
     const mapContainer = document.getElementById('map-container');
@@ -259,28 +308,14 @@
     const localPlayer = document.getElementById('local-player');
     const resizeHandle = document.getElementById('resize-handle');
     const rotSlider = document.getElementById('rot-slider');
+    const opacitySlider = document.getElementById('opacity-slider');
     const penSizeSlider = document.getElementById('pen-size');
     const localFace = document.getElementById('local-face');
     const doodleCanvas = document.getElementById('doodle-canvas');
     const doodleCtx = doodleCanvas.getContext('2d');
-    
-    let mode = 'move'; 
-    let pX, pY, pWidth = 100, pHeight = 60;
-    let vX = 0, vY = 0, rotation = 0;
-    const speed = 4;
-    let keys = {};
-    let life = 3, timeLeft = 60, timerInterval;
-    
-    let currentRoomId = null;
-    let currentMapIndex = 0;
-    let roomSeed = 1;
-    let existingHiders = [];
-    let tauntMessage = "시력 장식이냐? 젤리 승리 ㅋㅋ";
-    
-    // 💡 내 고유 식별자(UID) 발급 (익명_abc 형태)
-    const myUid = Math.random().toString(36).substr(2, 4);
 
-    const MAP_HEIGHT = 2500; 
+    const MAP_WIDTH = 1000; 
+    const MAP_HEIGHT = 5000; 
     const dpr = window.devicePixelRatio || 1;
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     
@@ -291,13 +326,19 @@
       document.getElementById('btn-hide').innerText = '🤫 주차';
     }
 
+    window.addEventListener('beforeunload', (e) => {
+      if (mode !== 'gameover' && !isIntentional) {
+        e.preventDefault(); e.returnValue = ''; 
+      }
+    });
+
     function seededRandom() {
       let x = Math.sin(roomSeed++) * 10000;
       return x - Math.floor(x);
     }
 
     // ==========================================
-    // 🎨 2500px "텍스트 지옥" 초고퀄리티 맵 생성기 (10종)
+    // 🎨 5000px "텍스트 지옥" 초고퀄리티 맵 생성기 (10종)
     // ==========================================
     const mapGenerators = [
       function drawBlog() {
@@ -312,7 +353,7 @@
         bgCtx.fillStyle = '#555'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('게임마스터 • 2026. 8. 22.', 65, cy+15); cy += 60;
 
         const texts = ["안녕하세요! 오늘은 화제의 게임 웹챠 카멜레온을 해봤습니다.", "처음엔 단순한 줄 알았는데, 심리전이 장난 아니네요.", "텍스트 사이에 교묘하게 숨는 유저들을 보면 감탄이 나옵니다.", "하이퍼링크 사이에 숨으면 진짜 눈 부릅뜨고 찾아야 해요.", "스크린샷을 보시면 아시겠지만 보호색이 핵심입니다.", "친구들과 9인팟으로 꼭 해보시길 강력 추천합니다!"];
-        for(let i=0; i<30; i++) {
+        for(let i=0; i<60; i++) {
           bgCtx.fillStyle = '#f1f2f6'; bgCtx.fillRect(20, cy, w-40, 200); 
           bgCtx.fillStyle = '#aaa'; bgCtx.font = '14px sans-serif'; bgCtx.fillText('이미지 불러오는 중...', w/2 - 70, cy+105); cy += 230;
           for(let j=0; j<6; j++) {
@@ -337,7 +378,7 @@
 
         const newsText = ["최근 출시된 웹 기반 멀티플레이 게임 '웹챠 카멜레온'이", "폭발적인 인기를 끌고 있다. 이 게임은 유저가 배경을 캡처해", "자신을 위장하는 독특한 시스템을 갖추고 있다.", "전문가들은 '인간의 착시를 이용한 심리전'을 성공 요인으로 꼽았다.", "텍스트가 밀집된 구간에서 위장할 경우, 시선을 완벽히 회피해", "명당으로 불리고 있다.", "개발진은 텍스트 맵을 추가해 난이도를 높일 계획이다.", "일부 유저들은 '시력 검사 게임이냐'는 불만을 토로하기도 했다.", "그럼에도 동시 접속자 수는 최고치를 경신 중이다."];
         bgCtx.fillStyle = '#222'; bgCtx.font = '17px serif';
-        for(let i=0; i<60; i++) {
+        for(let i=0; i<120; i++) {
           newsText.forEach(txt => { bgCtx.fillText(txt, 20, cy); cy += 32; }); cy += 20;
           if(i % 3 === 0) {
             bgCtx.fillStyle = '#f8f9fa'; bgCtx.fillRect(20, cy, w-40, 80);
@@ -354,7 +395,7 @@
         bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 24px serif'; bgCtx.fillText('제 42화. 보이지 않는 적', 20, cy); cy += 60;
         const novelLines = ["사방이 고요했다.", "적막 속에서 그는 조심스럽게 마우스를 쥐었다.", "\"분명히 이 근처에 숨어있을 텐데...\"", "화면에는 빼곡한 글씨들만이 가득할 뿐이었다.", "그때였다. 시야 구석에서 미세한 떨림이 포착된 것은.", "\"찾았다!\"", "그는 확신에 찬 비명을 지르며 화면을 클릭했다.", "하지만 들려온 것은 둔탁한 헛방 소리뿐이었다.", "\"...어떻게 저렇게 완벽하게 위장할 수가 있지?\"", "텍스트들은 처음부터 그 자리에 있던 것처럼 자연스러웠다.", "등줄기를 타고 식은땀이 흘렀다. 시간은 줄어들고 있었다."];
         bgCtx.fillStyle = '#222'; bgCtx.font = '18px serif';
-        for(let i=0; i<80; i++) { novelLines.forEach(line => { bgCtx.fillText(line, 25, cy); cy += 38; }); cy += 20; }
+        for(let i=0; i<160; i++) { novelLines.forEach(line => { bgCtx.fillText(line, 25, cy); cy += 38; }); cy += 20; }
       },
       function drawStackOverflow() {
         let w = bgCanvas.width/dpr;
@@ -368,7 +409,7 @@
         bgCtx.fillStyle = '#232629'; bgCtx.font = '15px sans-serif';
         bgCtx.fillText('I am playing this web game and I cannot find it.', 20, cy); cy += 25;
         bgCtx.fillText('Does anyone have a script to detect it?', 20, cy); cy += 30;
-        for(let i=0; i<15; i++) {
+        for(let i=0; i<30; i++) {
           bgCtx.fillStyle = '#f6f6f6'; bgCtx.beginPath(); bgCtx.roundRect(20, cy, w-40, 140, 5); bgCtx.fill();
           bgCtx.fillStyle = '#2f3337'; bgCtx.font = '14px monospace';
           bgCtx.fillText('function scanScreen() {', 35, cy+25);
@@ -385,7 +426,7 @@
         bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
         bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 24px sans-serif'; bgCtx.fillText('서비스 이용약관', 20, 50);
         let cy = 100; bgCtx.fillStyle = '#555'; bgCtx.font = '14px sans-serif';
-        for(let i=1; i<=100; i++) {
+        for(let i=1; i<=200; i++) {
           bgCtx.font = 'bold 15px sans-serif'; bgCtx.fillStyle = '#333';
           bgCtx.fillText(`제 ${i} 조 (목적 및 정의)`, 20, cy); cy += 25;
           bgCtx.font = '14px sans-serif'; bgCtx.fillStyle = '#666';
@@ -413,11 +454,11 @@
         tocs.forEach((t, i) => { bgCtx.fillText(t, 35 + (t.includes('.') ? 15 : 0), cy+60 + i*22); }); cy += 200;
         const wikiWords = ['술래가', '눈을', '감고', '숫자를', '세는', '동안', '다른', '사람들이', '숨고,', '그', '이후', '술래가', '숨은', '사람들을', '찾아내는', '전통적인', '놀이이다.', '최근에는', '인터넷', '환경에서', '보호색을', '이용한', '웹챠', '카멜레온과', '같은', '형태로', '발전하였다.'];
         bgCtx.font = '16px sans-serif';
-        for(let j=1; j<=20; j++) {
+        for(let j=1; j<=40; j++) {
           bgCtx.fillStyle = '#000'; bgCtx.font = '24px serif'; bgCtx.fillText(`${j}. 내용`, 20, cy); cy += 15;
           bgCtx.strokeStyle = '#ddd'; bgCtx.beginPath(); bgCtx.moveTo(20,cy); bgCtx.lineTo(w-20,cy); bgCtx.stroke(); cy += 25;
           bgCtx.font = '16px sans-serif';
-          for(let i=0; i<8; i++) {
+          for(let i=0; i<8; i++) { // 💡 수정됨: i<8
             let txtX = 20;
             wikiWords.forEach(word => {
               let rand = seededRandom();
@@ -438,7 +479,7 @@
         bgCtx.fillStyle = '#fff'; bgCtx.font = '16px sans-serif'; bgCtx.fillText('상품상세 | 상품평 | Q&A', 20, 32);
         let cy = 80;
         bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 22px sans-serif'; bgCtx.fillText('상품 Q&A (9,999건)', 20, cy); cy += 40;
-        for(let i=0; i<30; i++) {
+        for(let i=0; i<60; i++) {
           bgCtx.fillStyle = '#333'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('Q. 배송은 언제쯤 되나요?', 20, cy); cy += 25;
           bgCtx.fillStyle = '#777'; bgCtx.font = '13px sans-serif'; bgCtx.fillText('user_*** | 2026.08.22', 20, cy); cy += 25;
           bgCtx.fillStyle = '#f4f4f4'; bgCtx.fillRect(20, cy, w-40, 60);
@@ -459,7 +500,7 @@
         bgCtx.fillStyle = '#333'; bgCtx.font = '16px sans-serif'; bgCtx.fillText('진짜 힌트 1도 안줌. 3분안에 찾아보셈 ㅅㄱ', 20, cy); cy += 80;
         bgCtx.fillStyle = '#f4f4f4'; bgCtx.fillRect(0, cy, w, 40);
         bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('전체 댓글 145개', 20, cy+25); cy += 60;
-        for(let i=0; i<40; i++) {
+        for(let i=0; i<80; i++) {
           let isReply = seededRandom() > 0.7; let x = isReply ? 40 : 20;
           bgCtx.fillStyle = '#333'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText(isReply ? 'ㄴ ㅇㅇ(211.36)' : 'ㅇㅇ(14.32)', x, cy);
           bgCtx.fillStyle = '#888'; bgCtx.font = '12px sans-serif'; bgCtx.fillText('10:25', x + 100, cy); cy += 20;
@@ -476,7 +517,7 @@
         bgCtx.fillStyle = '#fff'; bgCtx.font = 'bold 24px sans-serif'; bgCtx.textAlign = 'center'; bgCtx.fillText('NEWNEEK', w/2, 40); bgCtx.textAlign = 'left';
         let cy = 120;
         bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 30px sans-serif'; bgCtx.fillText('카멜레온, 어디까지 숨어봤니?', 20, cy); cy += 50;
-        for(let i=0; i<15; i++) {
+        for(let i=0; i<30; i++) {
           bgCtx.fillStyle = '#ff6b00'; bgCtx.font = '20px sans-serif'; bgCtx.fillText('🦔 고슴이가 알려줄게!', 20, cy); cy += 35;
           bgCtx.fillStyle = '#333'; bgCtx.font = '16px sans-serif';
           bgCtx.fillText('요즘 유행하는 텍스트 위장 게임 아시나요?', 20, cy); cy += 28;
@@ -487,6 +528,133 @@
           bgCtx.fillStyle = '#f4f4f4'; bgCtx.beginPath(); bgCtx.roundRect(20, cy, w-40, 80, 10); bgCtx.fill();
           bgCtx.fillStyle = '#555'; bgCtx.font = 'bold 14px sans-serif'; bgCtx.fillText('💡 오늘의 꿀팁', 40, cy+30);
           bgCtx.font = '14px sans-serif'; bgCtx.fillText('위키나 약관 페이지가 숨기 좋아요.', 40, cy+55); cy += 120;
+        }
+      },
+      function drawVSCode() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#1e1e1e'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        bgCtx.fillStyle = '#252526'; bgCtx.fillRect(0, 0, 50, MAP_HEIGHT);
+        let cy = 40; bgCtx.font = '16px monospace';
+        const code = ["function findChameleon(target) {", "  const players = Array.from(document.querySelectorAll('.player'));", "  return players.filter(p => {", "    if (p.style.opacity === '0') {", "      console.log('Hidden player detected!');", "      return true;", "    }", "    return false;", "  });", "}", " ", "async function initGame() {", "  const isReady = await checkServer();", "  if (!isReady) throw new Error('Timeout');", "}"];
+        for(let i=0; i<160; i++) {
+          bgCtx.fillStyle = '#858585'; bgCtx.fillText(String(i+1), 15, cy);
+          code.forEach(line => {
+            let cx = 70;
+            line.split(' ').forEach(word => {
+              if(['function','const','return','if','async','await'].includes(word)) bgCtx.fillStyle = '#569cd6';
+              else if(word.includes("'")) bgCtx.fillStyle = '#ce9178';
+              else if(word.includes("()")) bgCtx.fillStyle = '#dcdcaa';
+              else bgCtx.fillStyle = '#d4d4d4';
+              bgCtx.fillText(word, cx, cy); cx += bgCtx.measureText(word + ' ').width;
+            });
+            cy += 24;
+          });
+        }
+      },
+      function drawKakaoChat() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#bacee0'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        let cy = 50;
+        for(let i=0; i<100; i++) {
+          let isMe = seededRandom() > 0.5;
+          bgCtx.fillStyle = isMe ? '#ffeb33' : '#fff';
+          const msgs = ["야 카멜레온 들어와", "링크 보냄 ㄱㄱ", "어디 숨었냐 진짜 안보이네", "힌트좀 주라", "ㅋㅋㅋㅋㅋㅋ 나 방금 개쩌는곳 찾음", "아 눈아파", "야 빨리 찾아 시간없어"];
+          let txt = msgs[Math.floor(seededRandom() * msgs.length)];
+          let tw = bgCtx.measureText(txt).width + 30;
+          let tx = isMe ? w - tw - 20 : 60;
+          if(!isMe) { bgCtx.fillStyle = '#444'; bgCtx.beginPath(); bgCtx.arc(30, cy+10, 15, 0, Math.PI*2); bgCtx.fill(); bgCtx.fillStyle = '#fff'; }
+          bgCtx.beginPath(); bgCtx.roundRect(tx, cy, tw, 35, 8); bgCtx.fill();
+          bgCtx.fillStyle = '#111'; bgCtx.font = '15px sans-serif'; bgCtx.fillText(txt, tx+15, cy+22);
+          bgCtx.fillStyle = '#555'; bgCtx.font = '11px sans-serif'; 
+          bgCtx.fillText('오전 10:24', isMe ? tx - 55 : tx + tw + 10, cy+25);
+          cy += 60;
+        }
+      },
+      function drawReceipt() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        bgCtx.fillStyle = '#111'; bgCtx.font = 'bold 24px monospace'; bgCtx.textAlign = 'center';
+        bgCtx.fillText('[ 영 수 증 ]', w/2, 60); bgCtx.textAlign = 'left';
+        let cy = 120; bgCtx.font = '15px monospace';
+        bgCtx.fillText('품명                단가   수량   금액', 20, cy); cy += 20;
+        bgCtx.fillText('--------------------------------------', 20, cy); cy += 30;
+        for(let i=0; i<120; i++) {
+          bgCtx.fillText('위장용 투명 망토     9,900    1   9,900', 20, cy); cy += 25;
+          bgCtx.fillText('매의 눈 안약        4,500    2   9,000', 20, cy); cy += 25;
+          bgCtx.fillText('도발용 확성기       1,500    5   7,500', 20, cy); cy += 25;
+          bgCtx.fillText('--------------------------------------', 20, cy); cy += 30;
+          bgCtx.font = 'bold 16px monospace'; bgCtx.fillText('합계금액                   125,400', 20, cy); cy += 60;
+          bgCtx.font = '15px monospace';
+        }
+      },
+      function drawTerminal() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#0c0c0c'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        let cy = 40; bgCtx.font = '14px monospace';
+        for(let i=0; i<200; i++) {
+          bgCtx.fillStyle = '#00ff00'; bgCtx.fillText('admin@webcha:~$ ', 15, cy);
+          bgCtx.fillStyle = '#cccccc'; bgCtx.fillText('tail -f /var/log/syslog', 140, cy); cy += 25;
+          for(let j=0; j<10; j++) {
+            bgCtx.fillStyle = '#888888'; bgCtx.fillText('[2026-08-22 16:13:16]', 15, cy);
+            bgCtx.fillStyle = seededRandom() > 0.9 ? '#ff5555' : '#cccccc';
+            let log = [" INFO Request handled successfully in 42ms", " WARN Target not found in sector 7G", " ERROR Connection refused by host", " DEBUG Checking packet sequence #4492", " FATAL Out of memory allocating grid"];
+            bgCtx.fillText(log[j], 180, cy); cy += 20;
+          }
+          cy += 20;
+        }
+      },
+      function drawPaper() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        bgCtx.fillStyle = '#000'; bgCtx.font = 'bold 26px serif'; bgCtx.textAlign = 'center';
+        bgCtx.fillText('보호색 메커니즘이 인지 피로도에 미치는 영향', w/2, 60); bgCtx.textAlign = 'left';
+        let cy = 120; bgCtx.font = '14px serif'; bgCtx.fillStyle = '#333';
+        const txt = "본 연구는 디지털 환경에서 텍스트와 배경색의 일치도가 사용자의 시각적 탐색 속도에 미치는 영향을 분석하였다. 실험 결과, 명도 대비가 5% 미만일 때 오류율이 급증하였으며, 특히 밀집된 텍스트 사이에서는 착시 현상이 발생하여 목표물을 인지하는 데 걸리는 시간이 평균 3.4배 증가하였다. 이는 웹챠 카멜레온과 같은 시스템에서 생존율을 높이는 핵심 요인으로 작용한다.";
+        for(let i=0; i<80; i++) {
+          bgCtx.font = 'bold 16px serif'; bgCtx.fillText(`${i+1}. 서론 및 연구 배경`, 20, cy); cy += 30;
+          bgCtx.font = '14px serif';
+          let tempCy = cy;
+          // 좌측 단
+          for(let j=0; j<8; j++) { bgCtx.fillText(txt.substring(0, 45), 20, tempCy); tempCy += 22; } // 💡 수정됨: j<8
+          // 우측 단
+          tempCy = cy;
+          for(let j=0; j<8; j++) { bgCtx.fillText(txt.substring(45, 90), w/2 + 10, tempCy); tempCy += 22; }
+          cy = tempCy + 40;
+        }
+      },
+      function drawDictionary() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#fdfdfd'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        let cy = 50;
+        for(let i=0; i<80; i++) {
+          bgCtx.fillStyle = '#c0392b'; bgCtx.font = 'bold 24px serif'; bgCtx.fillText('카멜레온', 20, cy);
+          bgCtx.fillStyle = '#7f8c8d'; bgCtx.font = '16px sans-serif'; bgCtx.fillText('[ca·me·le·on]', 120, cy); cy += 30;
+          bgCtx.fillStyle = '#2980b9'; bgCtx.font = 'bold 16px sans-serif'; bgCtx.fillText('명사', 20, cy); cy += 25;
+          bgCtx.fillStyle = '#2c3e50'; bgCtx.font = '16px serif'; 
+          bgCtx.fillText('1. 주변 환경에 맞추어 몸의 빛깔을 바꾸는 파충류.', 20, cy); cy += 25;
+          bgCtx.fillText('2. 웹에서 텍스트와 폰트를 복사해 숨는 얍삽한 유저.', 20, cy); cy += 30;
+          bgCtx.fillStyle = '#7f8c8d'; bgCtx.font = '14px serif';
+          bgCtx.fillText('예문) "아무리 찾아도 카멜레온처럼 숨어서 보이지 않는다."', 30, cy); cy += 40;
+          bgCtx.strokeStyle = '#ecf0f1'; bgCtx.beginPath(); bgCtx.moveTo(20, cy); bgCtx.lineTo(w-20, cy); bgCtx.stroke(); cy += 30;
+        }
+      },
+      function drawEmail() {
+        let w = bgCanvas.width/dpr;
+        bgCtx.fillStyle = '#fff'; bgCtx.fillRect(0, 0, w, MAP_HEIGHT);
+        bgCtx.fillStyle = '#f1f3f4'; bgCtx.fillRect(0, 0, w, 60);
+        bgCtx.fillStyle = '#d93025'; bgCtx.font = 'bold 22px sans-serif'; bgCtx.fillText('M Gmail', 20, 38);
+        let cy = 90;
+        for(let i=0; i<70; i++) {
+          bgCtx.fillStyle = i < 3 ? '#f2f6fc' : '#fff';
+          bgCtx.fillRect(0, cy-25, w, 50);
+          bgCtx.fillStyle = i < 3 ? '#202124' : '#5f6368';
+          let fw = i < 3 ? 'bold ' : '';
+          bgCtx.font = fw + '15px sans-serif'; bgCtx.fillText(seededRandom()>0.5 ? 'Webcha Team' : 'Security Alert', 20, cy);
+          bgCtx.font = fw + '14px sans-serif'; bgCtx.fillText('새로운 기기 로그인 알림 - 비밀번호를 변경해주세요.', 150, cy);
+          bgCtx.fillStyle = '#5f6368'; bgCtx.font = '13px sans-serif'; bgCtx.textAlign = 'right';
+          bgCtx.fillText('오전 10:24', w-20, cy); bgCtx.textAlign = 'left';
+          bgCtx.strokeStyle = '#e8eaed'; bgCtx.beginPath(); bgCtx.moveTo(0, cy+25); bgCtx.lineTo(w, cy+25); bgCtx.stroke();
+          cy += 50;
         }
       },
       function drawFinancialReport() {
@@ -514,21 +682,157 @@
       }
     ];
 
-    const MAP_WIDTH = 1000; // 💡 맵 가로 크기 고정 (추가)
-    const MAP_HEIGHT = 5000; 
-
-    // 1. renderMap 함수 교체
     function renderMap() {
-      bgCanvas.width = MAP_WIDTH * dpr;  // 기기 너비(clientWidth) 대신 고정 너비 사용
+      bgCanvas.width = MAP_WIDTH * dpr; 
       bgCanvas.height = MAP_HEIGHT * dpr; 
       bgCtx.scale(dpr, dpr); 
       roomSeed = currentMapIndex + 100;
       mapGenerators[currentMapIndex % mapGenerators.length]();
     }
-
-
     window.addEventListener('resize', renderMap);
 
+    // ==========================================
+    // 💡 이미지 업로드 및 압축 로직 (커스텀 맵)
+    // ==========================================
+    window.loadCustomMap = (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = () => {
+          const tempCanvas = document.createElement('canvas');
+          const maxW = 1080;
+          const scale = maxW / img.width;
+          tempCanvas.width = maxW;
+          tempCanvas.height = img.height * scale;
+          const tCtx = tempCanvas.getContext('2d');
+          tCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
+          
+          customMapBase64 = tempCanvas.toDataURL('image/jpeg', 0.6);
+          
+          if (db) db.ref('rooms/' + currentRoomId + '/customMap').set(customMapBase64);
+          applyCustomMap(customMapBase64);
+        };
+      };
+      reader.readAsDataURL(file);
+    };
+
+    function applyCustomMap(base64Image) {
+      const img = new Image();
+      img.src = base64Image;
+      img.onload = () => {
+        const ratio = img.height / img.width;
+        bgCanvas.width = MAP_WIDTH * dpr;
+        bgCanvas.height = (MAP_WIDTH * ratio) * dpr;
+        mapContainer.style.height = `${MAP_WIDTH * ratio}px`;
+        
+        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+        bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
+      };
+    }
+
+    // ==========================================
+    // 🎨 투명도, 스포이드, 이모지 스탬프, 모양 설정
+    // ==========================================
+    window.toggleShape = () => {
+      if(mode !== 'edit') return;
+      let idx = shapeTypes.indexOf(currentShape);
+      currentShape = shapeTypes[(idx + 1) % shapeTypes.length];
+      document.getElementById('btn-shape').innerText = shapeIcons[currentShape] + ' 모양';
+      localPlayer.className = `player-obj copied shape-${currentShape}`;
+      if (vX !== 0 || vY !== 0) localPlayer.classList.add('walking');
+    };
+
+    window.toggleEye = () => { localFace.innerText = localFace.innerText === '👀' ? '' : '👀'; };
+
+    let isDrawing = false; let drawTool = 'pen';
+    window.setTool = (t) => {
+      drawTool = t;
+      document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen');
+      document.getElementById('btn-eraser').classList.toggle('active-tool', t === 'eraser');
+      document.getElementById('btn-picker').classList.toggle('active-tool', t === 'picker');
+      
+      if (t === 'eraser') {
+        doodleCtx.globalCompositeOperation = 'destination-out';
+        doodleCanvas.style.cursor = 'cell';
+        mapContainer.style.cursor = 'crosshair';
+      } else {
+        doodleCtx.globalCompositeOperation = 'source-over';
+        doodleCanvas.style.cursor = 'crosshair';
+        mapContainer.style.cursor = 'crosshair'; 
+      }
+    };
+
+    opacitySlider.addEventListener('input', (e) => { localPlayer.style.opacity = e.target.value; });
+
+    function getDoodlePos(e) {
+      const mapRect = mapContainer.getBoundingClientRect();
+      const cX = (e.touches ? e.touches[0].clientX : e.clientX) - mapRect.left;
+      const cY = (e.touches ? e.touches[0].clientY : e.clientY) - mapRect.top;
+      const dx = cX - pX; const dy = cY - pY;
+      const rad = -rotation * (Math.PI / 180);
+      const rx = dx * Math.cos(rad) - dy * Math.sin(rad);
+      const ry = dx * Math.sin(rad) + dy * Math.cos(rad);
+      return { x: rx + (pWidth / 2), y: ry + (pHeight / 2) };
+    }
+
+    function extractColor(clientX, clientY) {
+      const mapRect = mapContainer.getBoundingClientRect();
+      const cX = clientX - mapRect.left; const cY = clientY - mapRect.top;
+      let px = Math.max(0, Math.min(bgCanvas.width - 1, cX * dpr));
+      let py = Math.max(0, Math.min(bgCanvas.height - 1, cY * dpr));
+      const pixel = bgCtx.getImageData(px, py, 1, 1).data;
+      const hex = "#" + (1 << 24 | pixel[0] << 16 | pixel[1] << 8 | pixel[2]).toString(16).slice(1);
+      document.getElementById('doodle-color').value = hex;
+      window.setTool('pen'); 
+    }
+
+    function startDraw(e) {
+      if (mode !== 'edit') return;
+      if (drawTool === 'picker') {
+        const cX = e.touches ? e.touches[0].clientX : e.clientX;
+        const cY = e.touches ? e.touches[0].clientY : e.clientY;
+        extractColor(cX, cY); return;
+      }
+      const p = getDoodlePos(e);
+      if (drawTool === 'text') {
+        const txt = document.getElementById('text-input').value;
+        const size = document.getElementById('pen-size').value * 2 + 10;
+        doodleCtx.font = `${size}px sans-serif`;
+        doodleCtx.fillStyle = document.getElementById('doodle-color').value;
+        doodleCtx.textAlign = 'center';
+        doodleCtx.fillText(txt, p.x, p.y + size/3);
+        return; 
+      }
+      isDrawing = true; 
+      doodleCtx.beginPath(); doodleCtx.moveTo(p.x, p.y); 
+      doodleCtx.lineWidth = document.getElementById('pen-size').value; 
+      doodleCtx.lineCap = 'round'; 
+      doodleCtx.strokeStyle = document.getElementById('doodle-color').value;
+    }
+    
+    function draw(e) {
+      if (!isDrawing || mode !== 'edit' || drawTool === 'picker' || drawTool === 'text') return;
+      if (e.touches) e.preventDefault(); 
+      const p = getDoodlePos(e); doodleCtx.lineTo(p.x, p.y); doodleCtx.stroke();
+    }
+    
+    doodleCanvas.addEventListener('mousedown', startDraw);
+    doodleCanvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', () => { isDrawing = false; });
+    doodleCanvas.addEventListener('touchstart', startDraw, { passive: false });
+    doodleCanvas.addEventListener('touchmove', draw, { passive: false });
+    window.addEventListener('touchend', () => { isDrawing = false; });
+
+    mapContainer.addEventListener('mousedown', (e) => { if (mode === 'edit' && drawTool === 'picker') extractColor(e.clientX, e.clientY); });
+    mapContainer.addEventListener('touchstart', (e) => { if (mode === 'edit' && drawTool === 'picker') extractColor(e.touches[0].clientX, e.touches[0].clientY); });
+
+    // ==========================================
+    // 🎛️ 회전 및 스캔 & 주차 시스템
+    // ==========================================
     let isResizing = false;
     function onResizeStart(e) {
       if (mode !== 'move') return;
@@ -545,112 +849,13 @@
       const rect = mapContainer.getBoundingClientRect();
       const currentMouseX = clientX - rect.left;
       const currentMouseY = clientY - rect.top; 
-
       pWidth = Math.round(Math.max(40, Math.min(300, (currentMouseX - pX) * 2)));
       pHeight = Math.round(Math.max(40, Math.min(300, (currentMouseY - pY) * 2)));
       localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
     }
     window.addEventListener('mousemove', (e) => handleResizeMove(e.clientX, e.clientY));
-    window.addEventListener('touchmove', (e) => {
-      if (isResizing) { e.preventDefault(); handleResizeMove(e.touches[0].clientX, e.touches[0].clientY); }
-    }, { passive: false });
+    window.addEventListener('touchmove', (e) => { if (isResizing) { e.preventDefault(); handleResizeMove(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
 
-    // ==========================================
-    // 🎨 💡 [핵심 패치] 스포이드 & 그리기 도구
-    // ==========================================
-    let isDrawing = false; let drawTool = 'pen';
-    
-    window.setTool = (t) => {
-      drawTool = t;
-      document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen');
-      document.getElementById('btn-eraser').classList.toggle('active-tool', t === 'eraser');
-      document.getElementById('btn-picker').classList.toggle('active-tool', t === 'picker');
-      
-      if (t === 'eraser') {
-        doodleCtx.globalCompositeOperation = 'destination-out';
-        doodleCanvas.style.cursor = 'cell';
-        mapContainer.style.cursor = 'crosshair';
-      } else if (t === 'picker') {
-        doodleCtx.globalCompositeOperation = 'source-over';
-        doodleCanvas.style.cursor = 'crosshair';
-        mapContainer.style.cursor = 'crosshair'; 
-      } else {
-        doodleCtx.globalCompositeOperation = 'source-over';
-        doodleCanvas.style.cursor = 'crosshair';
-        mapContainer.style.cursor = 'crosshair';
-      }
-    };
-
-    function getDoodlePos(e) {
-      const mapRect = mapContainer.getBoundingClientRect();
-      const cX = (e.touches ? e.touches[0].clientX : e.clientX) - mapRect.left;
-      const cY = (e.touches ? e.touches[0].clientY : e.clientY) - mapRect.top;
-      
-      const dx = cX - pX; const dy = cY - pY;
-      const rad = -rotation * (Math.PI / 180);
-      const rx = dx * Math.cos(rad) - dy * Math.sin(rad);
-      const ry = dx * Math.sin(rad) + dy * Math.cos(rad);
-      
-      return { x: rx + (pWidth / 2), y: ry + (pHeight / 2) };
-    }
-
-    function extractColor(clientX, clientY) {
-      const mapRect = mapContainer.getBoundingClientRect();
-      const cX = clientX - mapRect.left;
-      const cY = clientY - mapRect.top;
-      
-      let px = Math.max(0, Math.min(bgCanvas.width - 1, cX * dpr));
-      let py = Math.max(0, Math.min(bgCanvas.height - 1, cY * dpr));
-      
-      const pixel = bgCtx.getImageData(px, py, 1, 1).data;
-      const hex = "#" + (1 << 24 | pixel[0] << 16 | pixel[1] << 8 | pixel[2]).toString(16).slice(1);
-      
-      document.getElementById('doodle-color').value = hex;
-      window.setTool('pen'); 
-    }
-
-    function startDraw(e) {
-      if (mode !== 'edit') return;
-      if (drawTool === 'picker') {
-        const cX = e.touches ? e.touches[0].clientX : e.clientX;
-        const cY = e.touches ? e.touches[0].clientY : e.clientY;
-        extractColor(cX, cY);
-        return;
-      }
-
-      isDrawing = true; const p = getDoodlePos(e);
-      doodleCtx.beginPath(); doodleCtx.moveTo(p.x, p.y); 
-      doodleCtx.lineWidth = penSizeSlider.value; 
-      doodleCtx.lineCap = 'round'; 
-      doodleCtx.strokeStyle = document.getElementById('doodle-color').value;
-    }
-    
-    function draw(e) {
-      if (!isDrawing || mode !== 'edit' || drawTool === 'picker') return;
-      if (e.touches) e.preventDefault(); 
-      const p = getDoodlePos(e); doodleCtx.lineTo(p.x, p.y); doodleCtx.stroke();
-    }
-    
-    doodleCanvas.addEventListener('mousedown', startDraw);
-    doodleCanvas.addEventListener('mousemove', draw);
-    window.addEventListener('mouseup', () => { isDrawing = false; });
-    doodleCanvas.addEventListener('touchstart', startDraw, { passive: false });
-    doodleCanvas.addEventListener('touchmove', draw, { passive: false });
-    window.addEventListener('touchend', () => { isDrawing = false; });
-
-    function handleBgPicker(e) {
-      if (mode === 'edit' && drawTool === 'picker') {
-        const cX = e.touches ? e.touches[0].clientX : e.clientX;
-        const cY = e.touches ? e.touches[0].clientY : e.clientY;
-        extractColor(cX, cY);
-      }
-    }
-    mapContainer.addEventListener('mousedown', handleBgPicker);
-    mapContainer.addEventListener('touchstart', handleBgPicker);
-
-    // ==========================================
-    // 🎛️ 회전 및 스캔 & 주차 시스템
-    // ==========================================
     window.adjustRot = (val) => {
       let current = parseInt(rotSlider.value);
       current = (current + val) % 360;
@@ -696,14 +901,13 @@
         document.getElementById('overlap-warning').innerText = "⚠️ 이미 선점된 자리!";
         document.getElementById('overlap-warning').style.color = "#ff4757";
         setTimeout(() => {
-          document.getElementById('overlap-warning').innerText = "좌:조이스틱 | 우:스크롤";
+          document.getElementById('overlap-warning').innerText = "좌측:조이스틱 | 우측:스크롤";
           document.getElementById('overlap-warning').style.color = "#aaa";
         }, 1500);
         return;
       }
 
       playSound('shutter');
-
       const tCanvas = document.createElement('canvas');
       const sw = Math.round(pWidth * dpr), sh = Math.round(pHeight * dpr);
       const sx = Math.round((pX - pWidth/2) * dpr), sy = Math.round((pY - pHeight/2) * dpr);
@@ -724,8 +928,6 @@
       doodleCanvas.width = sw; doodleCanvas.height = sh;
       doodleCtx.scale(dpr, dpr);
     };
-
-    window.toggleEye = () => { localFace.innerText = localFace.innerText === '👀' ? '' : '👀'; };
     
     window.finishHiding = async () => {
       if (mode !== 'edit') return;
@@ -745,15 +947,14 @@
         mCtx.drawImage(bgImg, 0, 0, mergedCanvas.width, mergedCanvas.height);
         mCtx.drawImage(doodleCanvas, 0, 0); 
 
-        const localFace = document.getElementById('local-face');
         const eyeCheck = localFace ? (localFace.innerText === '👀') : false;
 
         const myData = {
           uid: myUid, 
           pX: pX, pY: pY, pWidth: pWidth, pHeight: pHeight, rotation: rotation,
-          opacity: opacitySlider.value,  // 💡 투명도 복구!
-          shape: currentShape,           // 💡 모양 복구!
-          hasEye: eyeCheck,
+          opacity: opacitySlider.value, 
+          hasEye: eyeCheck, 
+          shape: currentShape,
           image: mergedCanvas.toDataURL(),
           taunt: tauntMessage
         };
@@ -816,17 +1017,14 @@
       document.getElementById('ui-share').style.display = 'flex';
       if (isMobile) { actionBtn.style.display = 'none'; }
 
-      // 기존처럼 방장 여부를 묻지 않고 모두에게 준비 버튼을 보여줍니다.
       document.getElementById('btn-start-seek').style.display = 'inline-block';
 
       if (db) {
-        // 1. 총 숨은 인원 실시간 감지
         db.ref('rooms/' + currentRoomId + '/list').on('value', snap => {
           _totalHidden = snap.val() ? snap.val().length : 0;
           updateReadyState();
         });
         
-        // 2. 레디한 인원 실시간 감지
         db.ref('rooms/' + currentRoomId + '/ready').on('value', snap => {
           _readyCount = snap.val() ? Object.keys(snap.val()).length : 0;
           updateReadyState();
@@ -838,37 +1036,32 @@
 
     function updateReadyState() {
       const statusText = document.getElementById('room-status-text');
-      
-      // 💡 과반수 기준 계산 (1명이면 1명, 2명이면 2명, 3명이면 2명, 4명이면 3명 필요)
       const majority = Math.max(1, Math.floor(_totalHidden / 2) + 1);
-      
       let baseText = `현재 ${_totalHidden}명 주차! (레디: ${_readyCount}/${majority}명)`;
       
       if (_readyCount >= majority) {
-        // 과반수가 넘으면 타이머 시작!
         if (!readyCountdown) {
           countdownValue = 5;
-          playSound('shutter'); // 타이머 시작 효과음
+          playSound('shutter'); 
           readyCountdown = setInterval(() => {
             countdownValue--;
             if (countdownValue <= 0) {
               clearInterval(readyCountdown);
-              window.startPartySeek(); // 5초 뒤 전원 동시 시작!
+              window.startPartySeek(); 
             } else {
               statusText.innerText = `${baseText} ⏳ ${countdownValue}초 뒤 시작!`;
             }
           }, 1000);
         }
         statusText.innerText = `${baseText} ⏳ ${countdownValue}초 뒤 시작!`;
-        statusText.style.color = '#f1c40f'; // 긴장감 있는 노란색
+        statusText.style.color = '#f1c40f'; 
       } else {
-        // 과반수가 깨지면 타이머 즉시 정지 및 취소
         if (readyCountdown) {
           clearInterval(readyCountdown);
           readyCountdown = null;
         }
         statusText.innerText = baseText;
-        statusText.style.color = '#2ecc71'; // 평온한 초록색
+        statusText.style.color = '#2ecc71'; 
       }
     }
 
@@ -877,15 +1070,21 @@
       navigator.clipboard.writeText(shareUrl).then(() => alert("방 링크 복사 완료! (친구들에게 보내세요)"));
     };
 
+    window.sendTroll = (type) => {
+      if (!db) return;
+      db.ref('rooms/' + currentRoomId + '/trolls').push({
+        type: type, x: pX + (Math.random()*150 - 75), y: pY + (Math.random()*150 - 75)
+      });
+    };
+
     window.startPartySeek = () => {
-      if (db) {
-        db.ref('rooms/' + currentRoomId + '/status').set('seek');
-      }
+      if (db) db.ref('rooms/' + currentRoomId + '/status').set('seek');
+      isIntentional = true;
       location.href = `${location.origin}${location.pathname}?room=${currentRoomId}&mode=seek`;
     };
 
     // ==========================================
-    // 🕵️ 술래 모드
+    // 🕵️ 술래 모드 및 게임 결과
     // ==========================================
     async function initSeeker(id) {
       let roomData = null;
@@ -900,7 +1099,9 @@
       if (roomData) {
         mode = 'seek';
         currentMapIndex = roomData.mapIndex;
-        renderMap();
+        if (roomData.customMap) applyCustomMap(roomData.customMap);
+        else renderMap();
+        
         localPlayer.style.display = 'none';
 
         existingHiders = roomData.list || [];
@@ -911,7 +1112,9 @@
 
         existingHiders.forEach((data, idx) => {
           const el = document.createElement('div');
-          el.className = 'player-obj copied breathing target-obj';
+          
+          const applyShape = data.shape ? data.shape : 'rect';
+          el.className = `player-obj copied breathing target-obj shape-${applyShape}`;
           el.id = `target-${idx}`;
           el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
           el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
@@ -919,6 +1122,7 @@
           el.style.setProperty('--rot', `${data.rotation}deg`);
           el.style.backgroundImage = `url(${data.image})`;
           el.style.backgroundSize = '100% 100%';
+          el.style.opacity = data.opacity || 1; 
           if(data.hasEye) {
             const eye = document.createElement('span');
             eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
@@ -964,9 +1168,18 @@
               }
             }
           });
+
+          db.ref('rooms/' + id + '/trolls').on('child_added', snap => {
+            const troll = snap.val();
+            if (troll.type === 'fart') {
+              playSound('miss'); showFloatingText(troll.x, troll.y, '💨 뿌웅~', '#a55eea');
+            } else if (troll.type === 'laugh') {
+              playSound('shutter'); showFloatingText(troll.x, troll.y, '👻 메롱ㅋㅋ', '#ff4757');
+            }
+          });
         }
 
-        timeLeft = 60;
+        timeLeft = 180; // 💡 술래시간 180초 복구
         document.getElementById('time').innerText = timeLeft;
         timerInterval = setInterval(() => {
           timeLeft--;
@@ -978,11 +1191,12 @@
         }, 1000);
       } else {
         alert("데이터를 찾을 수 없습니다.");
+        isIntentional = true;
         location.href = location.pathname;
       }
     }
 
-   mapContainer.addEventListener('click', (e) => {
+    mapContainer.addEventListener('click', (e) => {
       if (mode !== 'seek') return;
       const hitTarget = e.target.closest('.target-obj');
       const now = Date.now();
@@ -991,7 +1205,6 @@
         const idx = parseInt(hitTarget.id.split('-')[1]);
         const caughtData = existingHiders[idx];
 
-        // 💡 [패치 1] 내 분신 클릭 차단 (셀프 색출 방지)
         if (caughtData.uid === myUid) {
           showFloatingText(e.clientX, e.clientY, `❌ 내 분신은 잡을 수 없음!`, '#e74c3c');
           return;
@@ -1000,7 +1213,7 @@
         if (db) {
           const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + idx);
           catchRef.transaction((current) => {
-            if (current === null) return myUid; // 내가 잡았다고 기록
+            if (current === null) return myUid; 
             return; 
           }, (error, committed) => {
             if (committed) {
@@ -1021,9 +1234,8 @@
                 showFloatingCombo(e.clientX, e.clientY, text, color);
               }
 
-              // 💡 [패치 3] 누군가 잡았을 때 실시간 킬로그 전송
               db.ref('rooms/' + currentRoomId + '/killLogs').push({
-                catcher: `익명_${myUid.substring(0, 4)}` // 아이디 4자리만 노출
+                catcher: `익명_${myUid}` 
               });
 
             } else {
@@ -1040,7 +1252,6 @@
         if (life <= 0) { 
           clearInterval(timerInterval); triggerGameOver("내 목숨 소진 ㅠㅠ"); 
         } else { 
-          // 💡 거리 계산 힌트 로직 (삭제되었던 것 복구!)
           const rect = mapContainer.getBoundingClientRect();
           const clickX = e.clientX - rect.left;
           const clickY = e.clientY - rect.top;
@@ -1065,50 +1276,41 @@
       }
     });
 
-    // 💡 [패치 2 & 4] 게임 종료 및 결과창 정산 로직
-    // 💡 게임 종료 및 결과창 정산 로직 복구
     async function triggerGameOver(reason) {
       mode = 'gameover';
       document.getElementById('ui-seek').style.display = 'none';
 
       let survived = false;
       if (db) {
-        // 현재까지 잡힌 젤리 목록 가져오기
         const caughtSnap = await db.ref('rooms/' + currentRoomId + '/caught').once('value');
         const caughtData = caughtSnap.val() || {};
         
-        // 내가 숨긴 젤리의 인덱스 찾기
         const myHiderIdx = existingHiders.findIndex(h => h.uid === myUid);
 
-        // 내가 젤리를 숨겼고, 그 젤리가 caught 목록에 없다면 생존!
         if (myHiderIdx !== -1 && !caughtData[myHiderIdx]) {
           survived = true;
-          myScore += 200; // 생존 보너스 추가
+          myScore += 200; 
           showFloatingBanner("🎉 생존 성공! 보너스 +200점");
         } else {
           showFloatingBanner(`"${reason}"`);
         }
 
-        // 최종 점수를 서버에 전송
         await db.ref('rooms/' + currentRoomId + '/results/' + myUid).set({
           uid: `익명_${myUid}`,
           score: myScore,
           survived: survived,
-          isHider: (myHiderIdx !== -1) // 숨은 유저인지 단순 술래인지 구분
+          isHider: (myHiderIdx !== -1) 
         });
 
-        // 팝업 띄우고 순위판 그리기 시작
         document.getElementById('ui-gameover').style.display = 'flex';
         renderLeaderboard();
       }
     }
 
-    // 순위판 렌더링 함수
     function renderLeaderboard() {
       if (!db) return;
       db.ref('rooms/' + currentRoomId + '/results').on('value', snap => {
         const results = snap.val() || {};
-        // 점수 순으로 내림차순 정렬
         const list = Object.values(results).sort((a, b) => b.score - a.score);
 
         const box = document.getElementById('leaderboard-box');
@@ -1154,14 +1356,11 @@
     }
 
     // ==========================================
-    // 🕹️ 반반 컨트롤 
+    // 🕹️ 조이스틱 및 컨트롤
     // ==========================================
-    let isJoystickActive = false;
-    let joyBase = document.getElementById('joy-base');
-    let joyKnob = document.getElementById('joy-knob');
-    let joyStart = { x: 0, y: 0 };
-    const MAX_JOY_RADIUS = 40;
-    const JOY_SPEED = 1.2; 
+    let isJoystickActive = false; let joyBase = document.getElementById('joy-base');
+    let joyKnob = document.getElementById('joy-knob'); let joyStart = { x: 0, y: 0 };
+    const MAX_JOY_RADIUS = 40; const JOY_SPEED = 1.2; 
     
     scrollWrapper.addEventListener('touchstart', (e) => {
       if(mode !== 'move' && mode !== 'edit') return;
@@ -1191,8 +1390,7 @@
     function endJoy() {
       if(isJoystickActive) { isJoystickActive = false; joyBase.style.display = 'none'; vX = 0; vY = 0; }
     }
-    window.addEventListener('touchend', endJoy);
-    window.addEventListener('touchcancel', endJoy);
+    window.addEventListener('touchend', endJoy); window.addEventListener('touchcancel', endJoy);
 
     function gameLoop() {
       if (mode === 'move' || mode === 'edit') {
@@ -1228,7 +1426,6 @@
         else await initJoinHider(currentRoomId);
       } else {
         currentRoomId = Math.random().toString(36).substr(2, 6);
-        // 💡 [핵심] 처음에 방을 만든 사람 브라우저에 '방장' 권한 저장
         localStorage.setItem('isHost_' + currentRoomId, 'true'); 
         
         currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
@@ -1238,6 +1435,10 @@
         pX = Math.round(scrollWrapper.clientWidth / 2); pY = Math.round(scrollWrapper.clientHeight / 2); 
         document.getElementById('ui-move').style.display = 'flex';
         localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
+        
+        // 💡 방장이면 사진 업로드 버튼 보여주기
+        document.getElementById('btn-upload-map').style.display = 'inline-block';
+        
         gameLoop();
       }
     }
@@ -1257,6 +1458,7 @@
           db.ref('rooms/' + id + '/status').on('value', snap => {
             if (snap.val() === 'seek') {
               alert("🚨 방장이 게임을 시작했습니다! 모두 색출 작전에 투입됩니다!");
+              isIntentional = true;
               location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
             }
           });
@@ -1265,16 +1467,14 @@
         currentMapIndex = roomData.mapIndex;
         existingHiders = roomData.list || [];
         
-        // 💡 방장이면 사진 업로드 버튼 보여주기 복구!
+        // 💡 방장이면 사진 업로드 버튼 보여주기
         if (localStorage.getItem('isHost_' + id) === 'true') {
           document.getElementById('btn-upload-map').style.display = 'inline-block';
         }
 
-        // 💡 커스텀 맵 렌더링 복구!
         if (roomData.customMap) applyCustomMap(roomData.customMap);
         else renderMap();
 
-        // 💡 실시간 커스텀 맵 동기화 복구!
         if (db) {
           db.ref('rooms/' + id + '/customMap').on('value', snap => {
             if (snap.exists()) applyCustomMap(snap.val());
@@ -1288,10 +1488,11 @@
           return; 
         }
         
-        // 💡 9명 꽉 찼을 때 전원 동시 시작 버그 복구!
         if (existingHiders.length >= 9) {
           alert("방이 꽉 찼습니다! (최대 9명) 술래 모드로 자동 시작됩니다.");
           if (db) db.ref('rooms/' + id + '/status').set('seek');
+          
+          isIntentional = true;
           location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
           return;
         }
@@ -1304,6 +1505,8 @@
 
         gameLoop();
       } else {
+        alert("데이터를 찾을 수 없습니다.");
+        isIntentional = true;
         location.href = location.pathname;
       }
     }
