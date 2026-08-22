@@ -37,8 +37,13 @@
     
     #taunt-input { width: 130px; padding: 5px; background: #fff; color: #111; border: 2px solid #e74c3c; }
 
-    #scroll-wrapper { flex-grow: 1; position: relative; overflow-y: auto; overflow-x: hidden; width: 100vw; background: #fff; }
-    #map-container { position: relative; width: 100%; height: 2500px; cursor: crosshair; }
+    #scroll-wrapper { flex-grow: 1; position: relative; overflow-y: auto; overflow-x: auto; width: 100%; background: #fff; }
+    
+    #map-container { position: relative; 
+      width: 1000px; /* 💡 핵심: 어떤 기기든 가로 크기를 1000px로 강제 고정! */
+      height: 5000px; 
+      cursor: crosshair; 
+    }
     #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
     .player-obj { position: absolute; transform: translate(-50%, -50%); z-index: 5; box-sizing: border-box; display: flex; justify-content: center; align-items: center; background-size: 100% 100%; background-repeat: no-repeat; pointer-events: none; }
@@ -508,13 +513,19 @@
       }
     ];
 
+    const MAP_WIDTH = 1000; // 💡 맵 가로 크기 고정 (추가)
+    const MAP_HEIGHT = 5000; 
+
+    // 1. renderMap 함수 교체
     function renderMap() {
-      bgCanvas.width = scrollWrapper.clientWidth * dpr; 
+      bgCanvas.width = MAP_WIDTH * dpr;  // 기기 너비(clientWidth) 대신 고정 너비 사용
       bgCanvas.height = MAP_HEIGHT * dpr; 
       bgCtx.scale(dpr, dpr); 
       roomSeed = currentMapIndex + 100;
       mapGenerators[currentMapIndex % mapGenerators.length]();
     }
+
+
     window.addEventListener('resize', renderMap);
 
     let isResizing = false;
@@ -965,7 +976,7 @@
       }
     }
 
-    mapContainer.addEventListener('click', (e) => {
+   mapContainer.addEventListener('click', (e) => {
       if (mode !== 'seek') return;
       const hitTarget = e.target.closest('.target-obj');
       const now = Date.now();
@@ -1006,7 +1017,7 @@
 
               // 💡 [패치 3] 누군가 잡았을 때 실시간 킬로그 전송
               db.ref('rooms/' + currentRoomId + '/killLogs').push({
-                catcher: `익명_${myUid}`
+                catcher: `익명_${myUid.substring(0, 4)}` // 아이디 4자리만 노출
               });
 
             } else {
@@ -1015,19 +1026,35 @@
           });
         }
       } else {
-        playSound('miss'); 
-        comboCount = 0; 
-        
-        life--;
-        document.getElementById('life').innerText = life;
+        playSound('miss'); comboCount = 0; 
+        life--; document.getElementById('life').innerText = life;
         mapContainer.classList.add('shake-screen');
         setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
 
-        if (life <= 0) {
-          clearInterval(timerInterval);
-          triggerGameOver("내 목숨 소진 ㅠㅠ");
-        } else {
-          showFloatingText(e.clientX, e.clientY, `❌ 헛방!`, '#e74c3c');
+        if (life <= 0) { 
+          clearInterval(timerInterval); triggerGameOver("내 목숨 소진 ㅠㅠ"); 
+        } else { 
+          // 💡 거리 계산 힌트 로직 (삭제되었던 것 복구!)
+          const rect = mapContainer.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+          const clickY = e.clientY - rect.top;
+
+          let minDist = Infinity;
+          document.querySelectorAll('.target-obj').forEach(el => {
+            const tx = parseFloat(el.style.left);
+            const ty = parseFloat(el.style.top);
+            const dist = Math.hypot(clickX - tx, clickY - ty);
+            if (dist < minDist) minDist = dist;
+          });
+
+          let hintMsg = "❌ 헛방!";
+          let hintColor = "#e74c3c";
+          if (minDist !== Infinity) {
+            if (minDist < 120) { hintMsg = `🔥 완전 뜨거움! (${Math.round(minDist)}px)`; hintColor = "#ff4757"; }
+            else if (minDist < 300) { hintMsg = `♨️ 따뜻함 (${Math.round(minDist)}px)`; hintColor = "#ffa502"; }
+            else { hintMsg = "❄️ 아주 멉니다"; hintColor = "#747d8c"; }
+          }
+          showFloatingText(e.clientX, e.clientY, hintMsg, hintColor);
         }
       }
     });
@@ -1168,7 +1195,7 @@
           if (keys['a'] || keys['arrowleft']) vX = -speed; else if (keys['d'] || keys['arrowright']) vX = speed;
         }
 
-        pX = Math.round(Math.max(pWidth/2, Math.min(scrollWrapper.clientWidth - pWidth/2, pX + vX)));
+        pX = Math.round(Math.max(pWidth/2, Math.min(MAP_WIDTH - pWidth/2, pX + vX)));
         pY = Math.round(Math.max(pHeight/2, Math.min(MAP_HEIGHT - pHeight/2, pY + vY)));
         localPlayer.style.left = `${pX}px`; localPlayer.style.top = `${pY}px`;
         
@@ -1232,21 +1259,6 @@
         existingHiders = roomData.list || [];
         renderMap();
 
-        existingHiders.forEach((data) => {
-          const el = document.createElement('div');
-          el.className = 'player-obj copied breathing';
-          el.style.width = `${data.pWidth}px`; el.style.height = `${data.pHeight}px`;
-          el.style.left = `${data.pX}px`; el.style.top = `${data.pY}px`;
-          el.style.transform = `translate(-50%, -50%) rotate(${data.rotation}deg)`;
-          el.style.setProperty('--rot', `${data.rotation}deg`);
-          el.style.backgroundImage = `url(${data.image})`;
-          el.style.backgroundSize = '100% 100%';
-          if(data.hasEye) {
-            const eye = document.createElement('span');
-            eye.className = 'obj-face'; eye.innerText = '👀'; el.appendChild(eye);
-          }
-          mapContainer.appendChild(el);
-        });
 
         if (localStorage.getItem('hidden_' + id)) {
           alert("이미 이 방에 위장하셨습니다! 친구들을 기다리거나 술래를 시작하세요.");
