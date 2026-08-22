@@ -8,14 +8,39 @@
   <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <!-- 게임용 귀여운 폰트 불러오기 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
 
   <style>
+    /* 커스텀 게임 알림창 스타일 */
+#game-alert-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6); z-index: 10000;
+  display: none; justify-content: center; align-items: center;
+}
+.game-alert-box {
+  background: #2c3e50; color: #fff; padding: 20px 40px;
+  border-radius: 12px; border: 4px solid #f1c40f;
+  font-size: 24px; text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  animation: popAlert 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+@keyframes popAlert {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
     /* 💡 위장 모양 (Shape) 클래스 */
     .shape-rect { border-radius: 0; clip-path: none; }
     .shape-circle { border-radius: 50%; }
     .shape-pill { border-radius: 50px; }
     .shape-rhombus { clip-path: polygon(15% 0, 100% 0, 85% 100%, 0% 100%); }
-    body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; }
+    body { 
+  margin: 0; 
+  font-family: 'Jua', sans-serif; /* 💡 폰트 변경됨 */
+  background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; 
+}
     
     /* 가로 스와이프 가능한 툴바 */
     #ui { 
@@ -27,9 +52,24 @@
     #ui::-webkit-scrollbar { display: none; }
     
     .ui-group { display: flex; gap: 8px; align-items: center; white-space: nowrap; flex-shrink: 0; }
-    button, input { padding: 6px 12px; font-weight: bold; border-radius: 6px; border: none; font-size: 14px; transition: 0.1s; box-sizing: border-box; }
-    button { cursor: pointer; }
-    button:active { transform: translateY(2px); }
+    button, input { 
+  padding: 8px 14px; 
+  font-family: 'Jua', sans-serif; /* 버튼에도 폰트 적용 */
+  font-size: 15px; 
+  border-radius: 8px; 
+  border: none; 
+  transition: 0.1s; 
+  box-sizing: border-box; 
+  outline: none;
+}
+button { 
+  cursor: pointer; 
+  box-shadow: 0 4px 0 rgba(0,0,0,0.3); /* 💡 입체 그림자 추가 */
+}
+button:active { 
+  transform: translateY(4px); /* 💡 누를 때 쏙 들어가는 효과 */
+  box-shadow: 0 0 0 rgba(0,0,0,0.3); /* 누르면 그림자 사라짐 */
+}
     
     .btn-main { background: #3498db; color: white; }
     .btn-action { background: #e74c3c; color: white; }
@@ -110,6 +150,10 @@
   </style>
 </head>
 <body>
+  <!-- 💡 커스텀 게임 알림창 -->
+<div id="game-alert-overlay">
+  <div class="game-alert-box" id="game-alert-message">알림 메시지</div>
+</div>
   <!-- 💡 실시간 킬로그가 뜰 상자 -->
   <div id="kill-log-box"></div> 
 
@@ -198,6 +242,18 @@
   <div id="mobile-action-btn">📸</div>
 
   <script>
+    // 💡 기본 alert를 대체하는 커스텀 팝업 함수
+function showGameAlert(msg, callback = null, duration = 2500) {
+  const overlay = document.getElementById('game-alert-overlay');
+  document.getElementById('game-alert-message').innerHTML = msg;
+  overlay.style.display = 'flex';
+  
+  // 지정된 시간(기본 2.5초) 후 팝업 닫기
+  setTimeout(() => {
+    overlay.style.display = 'none';
+    if (callback) callback(); // 팝업 닫힌 후 실행할 코드(페이지 이동 등)
+  }, duration);
+}
     // ==========================================
     // 💡 Firebase V8 안정화 버전 연동
     // ==========================================
@@ -1067,7 +1123,7 @@
 
     window.copyLink = () => {
       const shareUrl = `${location.origin}${location.pathname}?room=${currentRoomId}`;
-      navigator.clipboard.writeText(shareUrl).then(() => alert("방 링크 복사 완료! (친구들에게 보내세요)"));
+      navigator.clipboard.writeText(shareUrl).then(() => showGameAlert("🔗 방 링크 복사 완료!<br><span style='font-size:16px; color:#f1c40f;'>친구들에게 보내세요!</span>"));
     };
 
     window.sendTroll = (type) => {
@@ -1190,9 +1246,10 @@
           }
         }, 1000);
       } else {
-        alert("데이터를 찾을 수 없습니다.");
-        isIntentional = true;
-        location.href = location.pathname;
+        showGameAlert("❌ 데이터를 찾을 수 없습니다.", () => {
+  isIntentional = true;
+  location.href = location.pathname;
+}, 1500);
       }
     }
 
@@ -1457,9 +1514,11 @@
         if (db) {
           db.ref('rooms/' + id + '/status').on('value', snap => {
             if (snap.val() === 'seek') {
-              alert("🚨 방장이 게임을 시작했습니다! 모두 색출 작전에 투입됩니다!");
-              isIntentional = true;
-              location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
+              // [바꿀 코드]
+showGameAlert("🚨 방장이 게임을 시작했습니다!<br>모두 색출 작전에 투입됩니다!", () => {
+  isIntentional = true;
+  location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
+}, 3000); // 3초 뒤에 이동
             }
           });
         }
@@ -1482,18 +1541,19 @@
         }
 
         if (localStorage.getItem('hidden_' + id)) {
-          alert("이미 이 방에 위장하셨습니다! 친구들을 기다리거나 술래를 시작하세요.");
+          showGameAlert("👀 이미 위장 완료!<br><span style='font-size:16px; color:#ddd;'>친구들을 기다리거나 술래 모드를 시작하세요.</span>");
           document.getElementById('local-player').style.display = 'none'; 
           showShareScreen(existingHiders.length);
           return; 
         }
         
         if (existingHiders.length >= 9) {
-          alert("방이 꽉 찼습니다! (최대 9명) 술래 모드로 자동 시작됩니다.");
+          showGameAlert("🔥 방이 꽉 찼습니다! (최대 9명)<br>곧 술래 모드로 자동 시작됩니다.", () => {
+  isIntentional = true;
+  location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
+}, 2000);
           if (db) db.ref('rooms/' + id + '/status').set('seek');
           
-          isIntentional = true;
-          location.href = `${location.origin}${location.pathname}?room=${id}&mode=seek`;
           return;
         }
 
@@ -1505,9 +1565,10 @@
 
         gameLoop();
       } else {
-        alert("데이터를 찾을 수 없습니다.");
-        isIntentional = true;
-        location.href = location.pathname;
+        showGameAlert("❌ 데이터를 찾을 수 없습니다.", () => {
+  isIntentional = true;
+  location.href = location.pathname;
+}, 1500);
       }
     }
 
