@@ -1335,6 +1335,12 @@
 
         timeLeft = 180; 
         document.getElementById('time').innerText = timeLeft;
+        
+        // 💡 [추가됨] 새 라운드 시작 시 목숨 3개 꽉 채우기 & 콤보 초기화!
+        life = 3;
+        document.getElementById('life').innerText = life;
+        comboCount = 0;
+
         timerInterval = setInterval(() => {
           timeLeft--;
           document.getElementById('time').innerText = timeLeft;
@@ -1467,45 +1473,54 @@ mapContainer.addEventListener('click', (e) => {
       document.getElementById('ui-seek').style.display = 'none';
 
       let survived = false;
-      if (db) {
-        const caughtSnap = await db.ref('rooms/' + currentRoomId + '/caught').once('value');
-        const caughtData = caughtSnap.val() || {};
-        
-        let isHider = false;
-        
-        // 💡 [수정됨] 에러 없이 내가 살아남았는지 정확히 검사합니다.
-        Object.entries(existingHiders).forEach(([key, data]) => {
-          if (data && data.uid === myUid) {
-            isHider = true;
-            if (!caughtData[key] && !caughtData[data.idx]) {
-               survived = true; 
-            }
+      let isHider = false;
+
+      // 💡 [수정됨] DB 통신 중 에러가 나도 결과창은 무조건 띄우도록 철벽 방어!
+      try {
+        if (db) {
+          const caughtSnap = await db.ref('rooms/' + currentRoomId + '/caught').once('value');
+          const caughtData = caughtSnap.val() || {};
+          
+          if (existingHiders) {
+            Object.entries(existingHiders).forEach(([key, data]) => {
+              if (data && data.uid === myUid) {
+                isHider = true;
+                if (!caughtData[key] && !caughtData[data.idx]) {
+                   survived = true; 
+                }
+              }
+            });
           }
-        });
 
-        if (survived) {
-          myScore += 200; 
-          showFloatingBanner("🎉 생존 성공! 보너스 +200점");
-        } else {
-          showFloatingBanner(`"${reason}"`);
+          if (survived) {
+            myScore += 200; 
+            showFloatingBanner("🎉 생존 성공! 보너스 +200점");
+          } else {
+            showFloatingBanner(`"${reason}"`);
+          }
+
+          await db.ref('rooms/' + currentRoomId + '/results/' + myUid).set({
+            uid: myUid,
+            score: myScore,
+            survived: survived,
+            isHider: isHider 
+          });
         }
-
-        await db.ref('rooms/' + currentRoomId + '/results/' + myUid).set({
-          uid: myUid,
-          score: myScore,
-          survived: survived,
-          isHider: isHider 
-        });
-
+      } catch (err) {
+        console.error("결과 처리 중 에러 방어 완료!", err);
+      } finally {
+        // 🔥 에러가 나든 안 나든 여기는 무조건 실행되어 결과창을 띄웁니다!
         document.getElementById('result-title').innerText = window.currentRound >= 3 ? "🏆 최종 순위 발표" : `🏁 라운드 ${window.currentRound} 종료!`;
         const btnNext = document.getElementById('btn-next-round');
 
         if (window.currentRound >= 3) {
+          // 3라운드 끝: 완전 종료
           btnNext.innerText = "🔄 로비로 돌아가기";
           btnNext.style.background = "#e74c3c";
           btnNext.onclick = () => { isIntentional = true; location.href = location.pathname; };
           btnNext.style.display = 'block';
         } else {
+          // 다음 라운드 대기
           if (localStorage.getItem('isHost_' + currentRoomId) === 'true') {
             btnNext.innerText = `▶️ 다음 라운드 시작 (${window.currentRound + 1}/3)`;
             btnNext.style.background = "#3498db";
