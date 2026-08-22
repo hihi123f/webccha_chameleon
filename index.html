@@ -15,32 +15,32 @@
 
   <style>
     /* 커스텀 게임 알림창 스타일 */
-#game-alert-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.6); z-index: 10000;
-  display: none; justify-content: center; align-items: center;
-}
-.game-alert-box {
-  background: #2c3e50; color: #fff; padding: 20px 40px;
-  border-radius: 12px; border: 4px solid #f1c40f;
-  font-size: 24px; text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-  animation: popAlert 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-@keyframes popAlert {
-  0% { transform: scale(0.5); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
+    #game-alert-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6); z-index: 10000;
+      display: none; justify-content: center; align-items: center;
+    }
+    .game-alert-box {
+      background: #2c3e50; color: #fff; padding: 20px 40px;
+      border-radius: 12px; border: 4px solid #f1c40f;
+      font-size: 24px; text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      animation: popAlert 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    @keyframes popAlert {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
     /* 💡 위장 모양 (Shape) 클래스 */
     .shape-rect { border-radius: 0; clip-path: none; }
     .shape-circle { border-radius: 50%; }
     .shape-pill { border-radius: 50px; }
     .shape-rhombus { clip-path: polygon(15% 0, 100% 0, 85% 100%, 0% 100%); }
     body { 
-  margin: 0; 
-  font-family: 'Jua', sans-serif; /* 💡 폰트 변경됨 */
-  background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; 
-}
+      margin: 0; 
+      font-family: 'Jua', sans-serif; 
+      background: #111; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; touch-action: none; user-select: none; -webkit-user-select: none; 
+    }
     
     /* 가로 스와이프 가능한 툴바 */
     #ui { 
@@ -53,23 +53,23 @@
     
     .ui-group { display: flex; gap: 8px; align-items: center; white-space: nowrap; flex-shrink: 0; }
     button, input { 
-  padding: 8px 14px; 
-  font-family: 'Jua', sans-serif; /* 버튼에도 폰트 적용 */
-  font-size: 15px; 
-  border-radius: 8px; 
-  border: none; 
-  transition: 0.1s; 
-  box-sizing: border-box; 
-  outline: none;
-}
-button { 
-  cursor: pointer; 
-  box-shadow: 0 4px 0 rgba(0,0,0,0.3); /* 💡 입체 그림자 추가 */
-}
-button:active { 
-  transform: translateY(4px); /* 💡 누를 때 쏙 들어가는 효과 */
-  box-shadow: 0 0 0 rgba(0,0,0,0.3); /* 누르면 그림자 사라짐 */
-}
+      padding: 8px 14px; 
+      font-family: 'Jua', sans-serif; 
+      font-size: 15px; 
+      border-radius: 8px; 
+      border: none; 
+      transition: 0.1s; 
+      box-sizing: border-box; 
+      outline: none;
+    }
+    button { 
+      cursor: pointer; 
+      box-shadow: 0 4px 0 rgba(0,0,0,0.3); 
+    }
+    button:active { 
+      transform: translateY(4px); 
+      box-shadow: 0 0 0 rgba(0,0,0,0.3); 
+    }
     
     .btn-main { background: #3498db; color: white; }
     .btn-action { background: #e74c3c; color: white; }
@@ -84,7 +84,7 @@ button:active {
     #scroll-wrapper { flex-grow: 1; position: relative; overflow-y: auto; overflow-x: auto; width: 100%; background: #fff; }
     
     #map-container { position: relative; 
-      width: 1000px; /* 💡 맵 가로크기 강제 고정 (PC/모바일 동기화) */
+      width: 1000px; 
       height: 5000px; 
       cursor: crosshair; 
     }
@@ -149,32 +149,29 @@ button:active {
     .rank-item:last-child { border-bottom: none; }
 
     /* 💡 v2.0 로비 UI 스타일 */
-#lobby-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: #111 url('https://www.transparenttextures.com/patterns/stardust.png');
-  z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-.lobby-box {
-  background: #222; padding: 30px; border-radius: 15px; border: 4px solid #3498db;
-  text-align: center; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-}
-.lobby-title { color: #3498db; font-size: 32px; margin: 0 0 20px 0; text-shadow: 2px 2px 0 #000; }
-#nickname-input {
-  width: 100%; padding: 12px; font-size: 18px; text-align: center;
-  border-radius: 8px; border: 2px solid #555; margin-bottom: 20px; background: #333; color: white;
-}
-.room-list-box {
-  background: #1a1a1a; border-radius: 8px; height: 150px; overflow-y: auto;
-  margin-bottom: 20px; padding: 10px; text-align: left;
-}
-.room-item {
-  display: flex; justify-content: space-between; padding: 10px;
-  background: #333; border-radius: 6px; margin-bottom: 8px; font-size: 15px; color: white;
-}
-.room-item button { padding: 4px 10px; font-size: 13px; background: #2ecc71; }
-
-
-    
+    #lobby-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #111 url('https://www.transparenttextures.com/patterns/stardust.png');
+      z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .lobby-box {
+      background: #222; padding: 30px; border-radius: 15px; border: 4px solid #3498db;
+      text-align: center; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+    .lobby-title { color: #3498db; font-size: 32px; margin: 0 0 20px 0; text-shadow: 2px 2px 0 #000; }
+    #nickname-input {
+      width: 100%; padding: 12px; font-size: 18px; text-align: center;
+      border-radius: 8px; border: 2px solid #555; margin-bottom: 20px; background: #333; color: white;
+    }
+    .room-list-box {
+      background: #1a1a1a; border-radius: 8px; height: 150px; overflow-y: auto;
+      margin-bottom: 20px; padding: 10px; text-align: left;
+    }
+    .room-item {
+      display: flex; justify-content: space-between; padding: 10px;
+      background: #333; border-radius: 6px; margin-bottom: 8px; font-size: 15px; color: white;
+    }
+    .room-item button { padding: 4px 10px; font-size: 13px; background: #2ecc71; }
   </style>
 </head>
 <body>
@@ -183,7 +180,7 @@ button:active {
     <div class="game-alert-box" id="game-alert-message">알림 메시지</div>
   </div>
 
-  <!-- 💡 v2.0 로비 화면 (알림창 밖으로 무사히 탈출!) -->
+  <!-- 💡 v2.0 로비 화면 -->
   <div id="lobby-overlay">
     <div class="lobby-box">
       <h1 class="lobby-title">🦎 웹챠 카멜레온</h1>
@@ -230,12 +227,18 @@ button:active {
       <div class="control-box">
         <input type="color" id="doodle-color" value="#000000" style="padding:1px; width:26px; height:26px;">
         <input type="range" id="pen-size" min="1" max="30" value="3" style="width:50px;">
-        <button id="btn-picker" class="btn-sub" onclick="window.setTool('picker')">💧스포이드</button>
-        <button id="btn-pen" class="btn-sub active-tool" onclick="window.setTool('pen')">🖌️펜</button>
+        <button id="btn-picker" class="btn-sub" onclick="window.setTool('picker')">💧</button>
+        <button id="btn-pen" class="btn-sub" onclick="window.setTool('pen')">✏️펜</button>
+        <button id="btn-brush" class="btn-sub active-tool" onclick="window.setTool('brush')">🎨물감</button>
         <button id="btn-eraser" class="btn-sub" onclick="window.setTool('eraser')">🧹</button>
+        
+        <!-- 💡 복구된 텍스트/이모지 스탬프 툴 -->
+        <button id="btn-text" class="btn-sub" onclick="window.setTool('text')">🔠글씨</button>
+        <input type="text" id="text-input" placeholder="스탬프" style="width:90px; display:none; border:2px solid #3498db;">
+        
         <button class="btn-sub" onclick="window.toggleEye()">👀</button>
 
-        <input type="text" id="taunt-input" placeholder="인성질 멘트" maxlength="20">
+        <input type="text" id="taunt-input" placeholder="인성질 멘트" maxlength="20" style="margin-left:5px;">
         <button class="btn-action" id="btn-hide" onclick="window.finishHiding()">🤫 주차 (Space)</button>
       </div>
     </div>
@@ -261,25 +264,20 @@ button:active {
 
   <!-- 💡 [모바일 최적화 완벽 적용] 게임오버 팝업창 -->
   <div id="ui-gameover" style="display:none; flex-direction:column; align-items:center; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#111; padding:20px; border-radius:12px; border:3px solid #f1c40f; z-index:9999; box-shadow: 0 10px 30px rgba(0,0,0,0.8); width:90%; max-width:400px; box-sizing:border-box;">
-    <h2 style="margin:0 0 15px 0; color:#f1c40f; text-align:center; font-size:22px;">🏆 최종 결과 발표</h2>
+    <h2 id="result-title" style="margin:0 0 15px 0; color:#f1c40f; text-align:center; font-size:22px;">🏆 최종 결과 발표</h2>
     <div id="leaderboard-box" style="background:#222; padding:15px; border-radius:8px; margin-bottom:15px; color:white; text-align:left; max-height:40vh; overflow-y:auto; width:100%; box-sizing:border-box;">
        <!-- 순위가 여기에 채워집니다 -->
     </div>
-    <button class="btn-main" onclick="isIntentional=true; location.href=location.pathname" style="width:100%; padding:14px; font-size:16px; font-weight:bold; border-radius:8px;">🔄 새 게임 만들기</button>
+    <button id="btn-next-round" class="btn-main" style="width:100%; padding:14px; font-size:16px; font-weight:bold; border-radius:8px;"></button>
   </div>
 
   <div id="scroll-wrapper">
-    <!-- [수정 전] -->
-<div id="map-container">
-  <canvas id="bg-canvas"></canvas>
-  <div id="local-player" class="player-obj">
-<!-- [수정 후] -->
-<div id="map-container">
-  <canvas id="bg-canvas"></canvas>
-  <!-- 💡 [추가] 술래 모드 전용 렌더링 캔버스 -->
-  <canvas id="seek-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 4; display: none; pointer-events: none;"></canvas>
-  
-  <div id="local-player" class="player-obj">
+    <div id="map-container">
+      <canvas id="bg-canvas"></canvas>
+      <!-- 💡 [추가] 술래 모드 전용 렌더링 캔버스 -->
+      <canvas id="seek-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 4; display: none; pointer-events: none;"></canvas>
+      
+      <div id="local-player" class="player-obj">
         <div id="crosshair">+</div>
         <span id="local-face" class="obj-face"></span>
         <canvas id="doodle-canvas"></canvas>
@@ -293,17 +291,18 @@ button:active {
 
   <script>
     // 💡 기본 alert를 대체하는 커스텀 팝업 함수
-function showGameAlert(msg, callback = null, duration = 2500) {
-  const overlay = document.getElementById('game-alert-overlay');
-  document.getElementById('game-alert-message').innerHTML = msg;
-  overlay.style.display = 'flex';
-  
-  // 지정된 시간(기본 2.5초) 후 팝업 닫기
-  setTimeout(() => {
-    overlay.style.display = 'none';
-    if (callback) callback(); // 팝업 닫힌 후 실행할 코드(페이지 이동 등)
-  }, duration);
-}
+    function showGameAlert(msg, callback = null, duration = 2500) {
+      const overlay = document.getElementById('game-alert-overlay');
+      document.getElementById('game-alert-message').innerHTML = msg;
+      overlay.style.display = 'flex';
+      
+      // 지정된 시간(기본 2.5초) 후 팝업 닫기
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        if (callback) callback(); // 팝업 닫힌 후 실행할 코드(페이지 이동 등)
+      }, duration);
+    }
+
     // ==========================================
     // 💡 Firebase V8 안정화 버전 연동
     // ==========================================
@@ -384,7 +383,7 @@ function showGameAlert(msg, callback = null, duration = 2500) {
     let vX = 0, vY = 0, rotation = 0;
     const speed = 4;
     let keys = {};
-    let life = 3, timeLeft = 180, timerInterval; // 시간 180초로 복구
+    let life = 3, timeLeft = 180, timerInterval; 
     
     let currentRoomId = null;
     let currentMapIndex = 0;
@@ -403,7 +402,6 @@ function showGameAlert(msg, callback = null, duration = 2500) {
     const shapeTypes = ['rect', 'circle', 'pill', 'rhombus'];
     const shapeIcons = {'rect':'🔲', 'circle':'🟡', 'pill':'💊', 'rhombus':'🔺'};
     
-    // 💡 새로고침/뒤로가기 방지용 플래그
     let isIntentional = false; 
 
     const scrollWrapper = document.getElementById('scroll-wrapper');
@@ -419,66 +417,65 @@ function showGameAlert(msg, callback = null, duration = 2500) {
     const doodleCanvas = document.getElementById('doodle-canvas');
     const doodleCtx = doodleCanvas.getContext('2d');
 
-    // 💡 [추가] 3단계: 캔버스 렌더링 변수 및 숨결 루프 함수
-const seekCanvas = document.getElementById('seek-canvas');
-const seekCtx = seekCanvas.getContext('2d');
-let activeTargets = [];
-let seekLoopId = null;
+    // 💡 3단계: 캔버스 렌더링 변수 및 숨결 루프 함수
+    const seekCanvas = document.getElementById('seek-canvas');
+    const seekCtx = seekCanvas.getContext('2d');
+    let activeTargets = [];
+    let seekLoopId = null;
 
-function seekLoop() {
-  if (mode !== 'seek') return;
-  seekCtx.clearRect(0, 0, seekCanvas.width, seekCanvas.height);
-  const now = Date.now();
+    function seekLoop() {
+      if (mode !== 'seek') return;
+      seekCtx.clearRect(0, 0, seekCanvas.width, seekCanvas.height);
+      const now = Date.now();
 
-  activeTargets.forEach(t => {
-    if (t.caught) return;
+      activeTargets.forEach(t => {
+        if (t.caught) return;
 
-    // 숨결(Breathing) 애니메이션 수학적 계산 (sin 함수 이용)
-    const breathScale = 1 + Math.sin(now / 477) * 0.02;
-    const breathY = Math.sin(now / 477) * 2;
+        // 숨결(Breathing) 애니메이션 수학적 계산
+        const breathScale = 1 + Math.sin(now / 477) * 0.02;
+        const breathY = Math.sin(now / 477) * 2;
 
-    seekCtx.save();
-    // dpr을 곱해서 고해상도로 그림
-    seekCtx.translate(t.pX * dpr, (t.pY + breathY) * dpr);
-    seekCtx.rotate(t.rotation * Math.PI / 180);
-    seekCtx.scale(breathScale, breathScale);
-    seekCtx.globalAlpha = t.opacity || 1;
+        seekCtx.save();
+        seekCtx.translate(t.pX * dpr, (t.pY + breathY) * dpr);
+        seekCtx.rotate(t.rotation * Math.PI / 180);
+        seekCtx.scale(breathScale, breathScale);
+        seekCtx.globalAlpha = t.opacity || 1;
 
-    // 모양(Shape) 클리핑 적용
-    seekCtx.beginPath();
-    const hw = (t.pWidth * dpr) / 2;
-    const hh = (t.pHeight * dpr) / 2;
-    
-    if (t.shape === 'circle') {
-      seekCtx.arc(0, 0, Math.max(hw, hh), 0, Math.PI * 2);
-    } else if (t.shape === 'pill') {
-      seekCtx.roundRect(-hw, -hh, hw * 2, hh * 2, Math.min(hw, hh));
-    } else if (t.shape === 'rhombus') {
-      seekCtx.moveTo(0, -hh); seekCtx.lineTo(hw, 0);
-      seekCtx.lineTo(0, hh); seekCtx.lineTo(-hw, 0);
-    } else {
-      seekCtx.rect(-hw, -hh, hw * 2, hh * 2);
+        // 모양(Shape) 클리핑 적용
+        seekCtx.beginPath();
+        const hw = (t.pWidth * dpr) / 2;
+        const hh = (t.pHeight * dpr) / 2;
+        
+        if (t.shape === 'circle') {
+          seekCtx.arc(0, 0, Math.max(hw, hh), 0, Math.PI * 2);
+        } else if (t.shape === 'pill') {
+          seekCtx.roundRect(-hw, -hh, hw * 2, hh * 2, Math.min(hw, hh));
+        } else if (t.shape === 'rhombus') {
+          seekCtx.moveTo(0, -hh); seekCtx.lineTo(hw, 0);
+          seekCtx.lineTo(0, hh); seekCtx.lineTo(-hw, 0);
+        } else {
+          seekCtx.rect(-hw, -hh, hw * 2, hh * 2);
+        }
+        seekCtx.clip();
+
+        // 캡처한 이미지 그리기
+        if (t.img && t.img.complete) {
+          seekCtx.drawImage(t.img, -hw, -hh, hw * 2, hh * 2);
+        }
+
+        // 눈알 그리기
+        if (t.hasEye) {
+          seekCtx.font = `${22 * dpr}px sans-serif`;
+          seekCtx.textAlign = 'center';
+          seekCtx.textBaseline = 'middle';
+          seekCtx.fillText('👀', 0, 0);
+        }
+
+        seekCtx.restore();
+      });
+
+      seekLoopId = requestAnimationFrame(seekLoop);
     }
-    seekCtx.clip();
-
-    // 캡처한 이미지 그리기
-    if (t.img && t.img.complete) {
-      seekCtx.drawImage(t.img, -hw, -hh, hw * 2, hh * 2);
-    }
-
-    // 눈알(👀) 그리기
-    if (t.hasEye) {
-      seekCtx.font = `${22 * dpr}px sans-serif`;
-      seekCtx.textAlign = 'center';
-      seekCtx.textBaseline = 'middle';
-      seekCtx.fillText('👀', 0, 0);
-    }
-
-    seekCtx.restore();
-  });
-
-  seekLoopId = requestAnimationFrame(seekLoop);
-}
 
     const MAP_WIDTH = 1000; 
     const MAP_HEIGHT = 5000; 
@@ -624,7 +621,7 @@ function seekLoop() {
           bgCtx.fillStyle = '#000'; bgCtx.font = '24px serif'; bgCtx.fillText(`${j}. 내용`, 20, cy); cy += 15;
           bgCtx.strokeStyle = '#ddd'; bgCtx.beginPath(); bgCtx.moveTo(20,cy); bgCtx.lineTo(w-20,cy); bgCtx.stroke(); cy += 25;
           bgCtx.font = '16px sans-serif';
-          for(let i=0; i<8; i++) { // 💡 수정됨: i<8
+          for(let i=0; i<8; i++) { 
             let txtX = 20;
             wikiWords.forEach(word => {
               let rand = seededRandom();
@@ -780,9 +777,7 @@ function seekLoop() {
           bgCtx.font = 'bold 16px serif'; bgCtx.fillText(`${i+1}. 서론 및 연구 배경`, 20, cy); cy += 30;
           bgCtx.font = '14px serif';
           let tempCy = cy;
-          // 좌측 단
-          for(let j=0; j<8; j++) { bgCtx.fillText(txt.substring(0, 45), 20, tempCy); tempCy += 22; } // 💡 수정됨: j<8
-          // 우측 단
+          for(let j=0; j<8; j++) { bgCtx.fillText(txt.substring(0, 45), 20, tempCy); tempCy += 22; }
           tempCy = cy;
           for(let j=0; j<8; j++) { bgCtx.fillText(txt.substring(45, 90), w/2 + 10, tempCy); tempCy += 22; }
           cy = tempCy + 40;
@@ -917,18 +912,29 @@ function seekLoop() {
     let isDrawing = false; let drawTool = 'pen';
     window.setTool = (t) => {
       drawTool = t;
-      document.getElementById('btn-pen').classList.toggle('active-tool', t === 'pen');
-      document.getElementById('btn-eraser').classList.toggle('active-tool', t === 'eraser');
-      document.getElementById('btn-picker').classList.toggle('active-tool', t === 'picker');
       
+      const tools = ['pen', 'brush', 'eraser', 'picker', 'text'];
+      tools.forEach(tool => {
+        const btn = document.getElementById('btn-' + tool);
+        if (btn) btn.classList.toggle('active-tool', t === tool);
+      });
+      
+      const textInput = document.getElementById('text-input');
+      if (textInput) textInput.style.display = (t === 'text') ? 'inline-block' : 'none';
+
+      doodleCanvas.style.cursor = (t === 'text') ? 'text' : (t === 'eraser' ? 'cell' : 'crosshair');
+      mapContainer.style.cursor = doodleCanvas.style.cursor;
+
+      doodleCtx.shadowBlur = 0;
+      doodleCtx.globalAlpha = 1.0;
+
       if (t === 'eraser') {
         doodleCtx.globalCompositeOperation = 'destination-out';
-        doodleCanvas.style.cursor = 'cell';
-        mapContainer.style.cursor = 'crosshair';
       } else {
         doodleCtx.globalCompositeOperation = 'source-over';
-        doodleCanvas.style.cursor = 'crosshair';
-        mapContainer.style.cursor = 'crosshair'; 
+        if (t === 'brush') {
+          doodleCtx.globalAlpha = 0.4;
+        }
       }
     };
 
@@ -966,18 +972,30 @@ function seekLoop() {
       const p = getDoodlePos(e);
       if (drawTool === 'text') {
         const txt = document.getElementById('text-input').value;
-        const size = document.getElementById('pen-size').value * 2 + 10;
-        doodleCtx.font = `${size}px sans-serif`;
+        if (!txt) return;
+        const size = parseInt(document.getElementById('pen-size').value) * 3 + 10;
+        doodleCtx.font = `bold ${size}px 'Jua', sans-serif`;
         doodleCtx.fillStyle = document.getElementById('doodle-color').value;
         doodleCtx.textAlign = 'center';
-        doodleCtx.fillText(txt, p.x, p.y + size/3);
+        doodleCtx.textBaseline = 'middle';
+        doodleCtx.fillText(txt, p.x, p.y);
         return; 
       }
+      
       isDrawing = true; 
-      doodleCtx.beginPath(); doodleCtx.moveTo(p.x, p.y); 
+      doodleCtx.beginPath(); 
+      doodleCtx.moveTo(p.x, p.y); 
       doodleCtx.lineWidth = document.getElementById('pen-size').value; 
       doodleCtx.lineCap = 'round'; 
+      doodleCtx.lineJoin = 'round';
       doodleCtx.strokeStyle = document.getElementById('doodle-color').value;
+
+      if (drawTool === 'brush') {
+        doodleCtx.shadowBlur = doodleCtx.lineWidth * 0.8;
+        doodleCtx.shadowColor = doodleCtx.strokeStyle;
+      } else {
+        doodleCtx.shadowBlur = 0;
+      }
     }
     
     function draw(e) {
@@ -1159,7 +1177,7 @@ function seekLoop() {
 
     window.toggleReady = () => {
       if (!db) {
-        window.startPartySeek(); // 오프라인일 땐 바로 시작
+        window.startPartySeek(); 
         return;
       }
       
@@ -1168,11 +1186,11 @@ function seekLoop() {
       
       if (isReady) {
         btn.innerText = '❌ 준비 취소';
-        btn.style.background = '#95a5a6'; // 회색
+        btn.style.background = '#95a5a6';
         db.ref('rooms/' + currentRoomId + '/ready/' + myUid).set(true);
       } else {
         btn.innerText = '✔️ 준비 (레디)';
-        btn.style.background = '#e74c3c'; // 빨간색
+        btn.style.background = '#e74c3c';
         db.ref('rooms/' + currentRoomId + '/ready/' + myUid).remove();
       }
     };
@@ -1243,28 +1261,24 @@ function seekLoop() {
       });
     };
 
-    // 💡 [추가] 새로고침 없이 화면을 술래 모드로 싹 바꿔주는 마법의 함수
-window.transitionToSeekMode = () => {
-  // 1. 숨기 모드에서 쓰던 UI들 전부 숨기기
-  document.getElementById('ui-move').style.display = 'none';
-  document.getElementById('ui-edit').style.display = 'none';
-  document.getElementById('ui-share').style.display = 'none';
-  document.getElementById('local-player').style.display = 'none';
-  
-  // 2. 술래 모드 세팅 함수 바로 실행
-  initSeeker(currentRoomId);
-};
+    window.transitionToSeekMode = () => {
+      document.getElementById('ui-move').style.display = 'none';
+      document.getElementById('ui-edit').style.display = 'none';
+      document.getElementById('ui-share').style.display = 'none';
+      document.getElementById('local-player').style.display = 'none';
+      
+      initSeeker(currentRoomId);
+    };
 
-window.startPartySeek = () => {
-  if (db) {
-    db.ref('rooms/' + currentRoomId + '/status').set('seek');
-  } else {
-    // 오프라인 모드일 때는 알림 띄우고 직접 전환
-    showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
-      window.transitionToSeekMode();
-    }, 2000);
-  }
-};
+    window.startPartySeek = () => {
+      if (db) {
+        db.ref('rooms/' + currentRoomId + '/status').set('seek');
+      } else {
+        showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
+          window.transitionToSeekMode();
+        }, 2000);
+      }
+    };
 
     // ==========================================
     // 🕵️ 술래 모드 및 게임 결과
@@ -1294,22 +1308,19 @@ window.startPartySeek = () => {
         if (isMobile) { actionBtn.style.display = 'none'; }
 
         seekCanvas.width = MAP_WIDTH * dpr;
-seekCanvas.height = MAP_HEIGHT * dpr;
-seekCanvas.style.display = 'block';
+        seekCanvas.height = MAP_HEIGHT * dpr;
+        seekCanvas.style.display = 'block';
 
-// DOM 대신 자바스크립트 배열에 타겟 데이터 장전
-activeTargets = existingHiders.map((data, idx) => {
-  const img = new Image();
-  img.src = data.image; // 병합된 이미지 로드
-  return { ...data, idx: idx, img: img, caught: false };
-});
+        activeTargets = existingHiders.map((data, idx) => {
+          const img = new Image();
+          img.src = data.image; 
+          return { ...data, idx: idx, img: img, caught: false };
+        });
 
-// 숨결 렌더링 루프 시작
-if (seekLoopId) cancelAnimationFrame(seekLoopId);
-seekLoop();
+        if (seekLoopId) cancelAnimationFrame(seekLoopId);
+        seekLoop();
 
         if (db) {
-          // 💡 실시간 킬로그 수신
           db.ref('rooms/' + id + '/killLogs').on('child_added', snap => {
             const log = snap.val();
             const box = document.getElementById('kill-log-box');
@@ -1322,28 +1333,28 @@ seekLoop();
           });
 
           db.ref('rooms/' + id + '/caught').on('child_added', snap => {
-  const idx = snap.key;
-  
-  if (activeTargets[idx] && !activeTargets[idx].caught) {
-    activeTargets[idx].caught = true; // 💡 캔버스에서 더 이상 안 그려짐
-    
-    const jelly = document.createElement('div');
-    jelly.className = 'jelly-busted'; jelly.innerText = '😳💦';
-    jelly.style.left = `${activeTargets[idx].pX}px`; jelly.style.top = `${activeTargets[idx].pY}px`;
-    mapContainer.appendChild(jelly);
+            const idx = snap.key;
+            
+            if (activeTargets[idx] && !activeTargets[idx].caught) {
+              activeTargets[idx].caught = true; 
+              
+              const jelly = document.createElement('div');
+              jelly.className = 'jelly-busted'; jelly.innerText = '😳💦';
+              jelly.style.left = `${activeTargets[idx].pX}px`; jelly.style.top = `${activeTargets[idx].pY}px`;
+              mapContainer.appendChild(jelly);
 
-    mapContainer.classList.add('shake-screen');
-    setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
+              mapContainer.classList.add('shake-screen');
+              setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
 
-    const remaining = activeTargets.filter(t => !t.caught).length;
-    document.getElementById('target-count').innerText = remaining;
+              const remaining = activeTargets.filter(t => !t.caught).length;
+              document.getElementById('target-count').innerText = remaining;
 
-    if (remaining === 0) {
-      clearInterval(timerInterval);
-      triggerGameOver("🎉 모든 타겟 색출 완료!");
-    }
-  }
-});
+              if (remaining === 0) {
+                clearInterval(timerInterval);
+                triggerGameOver("🎉 모든 타겟 색출 완료!");
+              }
+            }
+          });
 
           db.ref('rooms/' + id + '/trolls').on('child_added', snap => {
             const troll = snap.val();
@@ -1355,7 +1366,7 @@ seekLoop();
           });
         }
 
-        timeLeft = 180; // 💡 술래시간 180초 복구
+        timeLeft = 180; 
         document.getElementById('time').innerText = timeLeft;
         timerInterval = setInterval(() => {
           timeLeft--;
@@ -1367,169 +1378,159 @@ seekLoop();
         }, 1000);
       } else {
         showGameAlert("❌ 데이터를 찾을 수 없습니다.", () => {
-  isIntentional = true;
-  location.href = location.pathname;
-}, 1500);
+          isIntentional = true;
+          location.href = location.pathname;
+        }, 1500);
       }
     }
 
-    // 기존 mapContainer.addEventListener('click', (e) => { ... }) 전체를 아래 코드로 통째로 교체하세요.
+    mapContainer.addEventListener('click', (e) => {
+      if (mode !== 'seek') return;
+      const now = Date.now();
 
-mapContainer.addEventListener('click', (e) => {
-  if (mode !== 'seek') return;
-  const now = Date.now();
+      const rect = mapContainer.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
 
-  const rect = mapContainer.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const clickY = e.clientY - rect.top;
+      let hitTargetData = null;
+      let minDistToAny = Infinity;
 
-  let hitTargetData = null;
-  let minDistToAny = Infinity;
+      for (let i = activeTargets.length - 1; i >= 0; i--) {
+        const t = activeTargets[i];
+        if (t.caught) continue;
 
-  // 가장 위에 그려진(나중에 숨은) 녀석부터 클릭되도록 역순 탐색
-  for (let i = activeTargets.length - 1; i >= 0; i--) {
-    const t = activeTargets[i];
-    if (t.caught) continue;
+        const dist = Math.hypot(clickX - t.pX, clickY - t.pY);
+        if (dist < minDistToAny) minDistToAny = dist;
 
-    // 힌트용 거리 계산 (가장 가까운 거리 찾기)
-    const dist = Math.hypot(clickX - t.pX, clickY - t.pY);
-    if (dist < minDistToAny) minDistToAny = dist;
+        const dx = clickX - t.pX;
+        const dy = clickY - t.pY;
+        const rad = t.rotation * Math.PI / 180;
+        
+        const rx = dx * Math.cos(rad) + dy * Math.sin(rad);
+        const ry = -dx * Math.sin(rad) + dy * Math.cos(rad);
 
-    // 💡 [수학 공식] 회전된 사각형 안에 마우스 좌표가 있는지 판정
-    const dx = clickX - t.pX;
-    const dy = clickY - t.pY;
-    const rad = t.rotation * Math.PI / 180;
-    
-    // 마우스 좌표를 타겟의 회전 각도만큼 반대로 회전시켜서 직사각형 안에 들어오는지 확인
-    const rx = dx * Math.cos(rad) + dy * Math.sin(rad);
-    const ry = -dx * Math.sin(rad) + dy * Math.cos(rad);
+        const hw = t.pWidth / 2;
+        const hh = t.pHeight / 2;
 
-    const hw = t.pWidth / 2;
-    const hh = t.pHeight / 2;
-
-    if (rx >= -hw && rx <= hw && ry >= -hh && ry <= hh) {
-      hitTargetData = t;
-      break; // 맞췄으면 더 이상 뒤지지 않음
-    }
-  }
-
-  if (hitTargetData) {
-    if (hitTargetData.uid === myUid) {
-      showFloatingText(e.clientX, e.clientY, `❌ 내 분신은 잡을 수 없음!`, '#e74c3c');
-      return;
-    }
-    
-    if (db) {
-      const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + hitTargetData.idx);
-      catchRef.transaction((current) => {
-        if (current === null) return myUid; 
-        return; 
-      }, (error, committed) => {
-        if (committed) {
-          myScore += 100;
-          document.getElementById('my-score').innerText = myScore;
-          
-          if (now - lastCatchTime < 3000) comboCount++; else comboCount = 1;
-          lastCatchTime = now;
-          
-          const pitchMultiplier = 1 + (comboCount * 0.15); 
-          playSound('catch', pitchMultiplier); 
-          showFloatingText(e.clientX, e.clientY, `🎯 내가 잡음! (+100)`, '#2ecc71');
-
-          if (comboCount >= 2) {
-            let text = "DOUBLE KILL!"; let color = "#f1c40f";
-            if (comboCount === 3) { text = "TRIPLE KILL!"; color = "#e67e22"; }
-            else if (comboCount >= 4) { text = "UNSTOPPABLE!!"; color = "#ff4757"; }
-            showFloatingCombo(e.clientX, e.clientY, text, color);
-          }
-
-          db.ref('rooms/' + currentRoomId + '/killLogs').push({
-            catcher: myUid 
-          });
-        } else {
-          showFloatingText(e.clientX, e.clientY, `앗! 남이 먼저 낚아챔`, '#e67e22');
+        if (rx >= -hw && rx <= hw && ry >= -hh && ry <= hh) {
+          hitTargetData = t;
+          break; 
         }
-      });
-    }
-  } else {
-    // 헛방 로직
-    playSound('miss'); comboCount = 0; 
-    life--; document.getElementById('life').innerText = life;
-    mapContainer.classList.add('shake-screen');
-    setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
-
-    if (life <= 0) { 
-      clearInterval(timerInterval); triggerGameOver("내 목숨 소진 ㅠㅠ"); 
-    } else { 
-      let hintMsg = "❌ 헛방!";
-      let hintColor = "#e74c3c";
-      if (minDistToAny !== Infinity) {
-        if (minDistToAny < 120) { hintMsg = `🔥 완전 뜨거움! (${Math.round(minDistToAny)}px)`; hintColor = "#ff4757"; }
-        else if (minDistToAny < 300) { hintMsg = `♨️ 따뜻함 (${Math.round(minDistToAny)}px)`; hintColor = "#ffa502"; }
-        else { hintMsg = "❄️ 아주 멉니다"; hintColor = "#747d8c"; }
       }
-      showFloatingText(e.clientX, e.clientY, hintMsg, hintColor);
-    }
-  }
-});
 
-    async function triggerGameOver(reason) {
-  mode = 'gameover';
-  document.getElementById('ui-seek').style.display = 'none';
+      if (hitTargetData) {
+        if (hitTargetData.uid === myUid) {
+          showFloatingText(e.clientX, e.clientY, `❌ 내 분신은 잡을 수 없음!`, '#e74c3c');
+          return;
+        }
+        
+        if (db) {
+          const catchRef = db.ref('rooms/' + currentRoomId + '/caught/' + hitTargetData.idx);
+          catchRef.transaction((current) => {
+            if (current === null) return myUid; 
+            return; 
+          }, (error, committed) => {
+            if (committed) {
+              myScore += 100;
+              document.getElementById('my-score').innerText = myScore;
+              
+              if (now - lastCatchTime < 3000) comboCount++; else comboCount = 1;
+              lastCatchTime = now;
+              
+              const pitchMultiplier = 1 + (comboCount * 0.15); 
+              playSound('catch', pitchMultiplier); 
+              showFloatingText(e.clientX, e.clientY, `🎯 내가 잡음! (+100)`, '#2ecc71');
 
-  let survived = false;
-  if (db) {
-    const caughtSnap = await db.ref('rooms/' + currentRoomId + '/caught').once('value');
-    const caughtData = caughtSnap.val() || {};
-    
-    const myHiderIdx = existingHiders.findIndex(h => h.uid === myUid);
+              if (comboCount >= 2) {
+                let text = "DOUBLE KILL!"; let color = "#f1c40f";
+                if (comboCount === 3) { text = "TRIPLE KILL!"; color = "#e67e22"; }
+                else if (comboCount >= 4) { text = "UNSTOPPABLE!!"; color = "#ff4757"; }
+                showFloatingCombo(e.clientX, e.clientY, text, color);
+              }
 
-    if (myHiderIdx !== -1 && !caughtData[myHiderIdx]) {
-      survived = true;
-      myScore += 200; 
-      showFloatingBanner("🎉 생존 성공! 보너스 +200점");
-    } else {
-      showFloatingBanner(`"${reason}"`);
-    }
+              db.ref('rooms/' + currentRoomId + '/killLogs').push({
+                catcher: myUid 
+              });
+            } else {
+              showFloatingText(e.clientX, e.clientY, `앗! 남이 먼저 낚아챔`, '#e67e22');
+            }
+          });
+        }
+      } else {
+        playSound('miss'); comboCount = 0; 
+        life--; document.getElementById('life').innerText = life;
+        mapContainer.classList.add('shake-screen');
+        setTimeout(() => mapContainer.classList.remove('shake-screen'), 300);
 
-    await db.ref('rooms/' + currentRoomId + '/results/' + myUid).set({
-      uid: myUid,
-      score: myScore,
-      survived: survived,
-      isHider: (myHiderIdx !== -1) 
+        if (life <= 0) { 
+          clearInterval(timerInterval); triggerGameOver("내 목숨 소진 ㅠㅠ"); 
+        } else { 
+          let hintMsg = "❌ 헛방!";
+          let hintColor = "#e74c3c";
+          if (minDistToAny !== Infinity) {
+            if (minDistToAny < 120) { hintMsg = `🔥 완전 뜨거움! (${Math.round(minDistToAny)}px)`; hintColor = "#ff4757"; }
+            else if (minDistToAny < 300) { hintMsg = `♨️ 따뜻함 (${Math.round(minDistToAny)}px)`; hintColor = "#ffa502"; }
+            else { hintMsg = "❄️ 아주 멉니다"; hintColor = "#747d8c"; }
+          }
+          showFloatingText(e.clientX, e.clientY, hintMsg, hintColor);
+        }
+      }
     });
 
-    // 💡 [여기서부터 바뀐 부분] 라운드 수에 따라 결과창 버튼과 제목을 바꿈!
-    document.getElementById('result-title').innerText = window.currentRound >= 3 ? "🏆 최종 순위 발표" : `🏁 라운드 ${window.currentRound} 종료!`;
-    const btnNext = document.getElementById('btn-next-round');
+    async function triggerGameOver(reason) {
+      mode = 'gameover';
+      document.getElementById('ui-seek').style.display = 'none';
 
-    if (window.currentRound >= 3) {
-      // 3라운드 끝: 게임 완전 종료
-      btnNext.innerText = "🔄 로비로 돌아가기";
-      btnNext.style.background = "#e74c3c";
-      btnNext.onclick = () => { isIntentional = true; location.href = location.pathname; };
-      btnNext.style.display = 'block';
-    } else {
-      // 1, 2라운드 끝: 다음 라운드 대기
-      if (localStorage.getItem('isHost_' + currentRoomId) === 'true') {
-        btnNext.innerText = `▶️ 다음 라운드 시작 (${window.currentRound + 1}/3)`;
-        btnNext.style.background = "#3498db";
-        btnNext.onclick = () => startNextRound(); // 방장 전용 기능
-        btnNext.style.display = 'block';
-      } else {
-        btnNext.style.display = 'none'; // 방장이 아니면 버튼 숨기고 대기
-        const waitMsg = document.createElement('div');
-        waitMsg.id = 'wait-msg';
-        waitMsg.style.cssText = "color:#aaa; text-align:center; margin-top:10px; font-size:14px;";
-        waitMsg.innerText = "방장이 다음 라운드를 시작할 때까지 대기 중...";
-        if(!document.getElementById('wait-msg')) document.getElementById('ui-gameover').appendChild(waitMsg);
+      let survived = false;
+      if (db) {
+        const caughtSnap = await db.ref('rooms/' + currentRoomId + '/caught').once('value');
+        const caughtData = caughtSnap.val() || {};
+        
+        const myHiderIdx = existingHiders.findIndex(h => h.uid === myUid);
+
+        if (myHiderIdx !== -1 && !caughtData[myHiderIdx]) {
+          survived = true;
+          myScore += 200; 
+          showFloatingBanner("🎉 생존 성공! 보너스 +200점");
+        } else {
+          showFloatingBanner(`"${reason}"`);
+        }
+
+        await db.ref('rooms/' + currentRoomId + '/results/' + myUid).set({
+          uid: myUid,
+          score: myScore,
+          survived: survived,
+          isHider: (myHiderIdx !== -1) 
+        });
+
+        document.getElementById('result-title').innerText = window.currentRound >= 3 ? "🏆 최종 순위 발표" : `🏁 라운드 ${window.currentRound} 종료!`;
+        const btnNext = document.getElementById('btn-next-round');
+
+        if (window.currentRound >= 3) {
+          btnNext.innerText = "🔄 로비로 돌아가기";
+          btnNext.style.background = "#e74c3c";
+          btnNext.onclick = () => { isIntentional = true; location.href = location.pathname; };
+          btnNext.style.display = 'block';
+        } else {
+          if (localStorage.getItem('isHost_' + currentRoomId) === 'true') {
+            btnNext.innerText = `▶️ 다음 라운드 시작 (${window.currentRound + 1}/3)`;
+            btnNext.style.background = "#3498db";
+            btnNext.onclick = () => startNextRound(); 
+            btnNext.style.display = 'block';
+          } else {
+            btnNext.style.display = 'none'; 
+            const waitMsg = document.createElement('div');
+            waitMsg.id = 'wait-msg';
+            waitMsg.style.cssText = "color:#aaa; text-align:center; margin-top:10px; font-size:14px;";
+            waitMsg.innerText = "방장이 다음 라운드를 시작할 때까지 대기 중...";
+            if(!document.getElementById('wait-msg')) document.getElementById('ui-gameover').appendChild(waitMsg);
+          }
+        }
+
+        document.getElementById('ui-gameover').style.display = 'flex';
+        renderLeaderboard();
       }
     }
-
-    document.getElementById('ui-gameover').style.display = 'flex';
-    renderLeaderboard();
-  }
-}
 
     function renderLeaderboard() {
       if (!db) return;
@@ -1546,7 +1547,7 @@ mapContainer.addEventListener('click', (e) => {
           
           let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '🔹'));
           let surviveTag = r.survived ? ' <span style="color:#2ecc71; font-size:12px;">[생존]</span>' : (r.isHider ? ' <span style="color:#e74c3c; font-size:12px;">[검거됨]</span>' : '');
-          let meTag = (r.uid === myUid`) ? ' <span style="color:#f1c40f;">(나)</span>' : '';
+          let meTag = (r.uid === myUid) ? ' <span style="color:#f1c40f;">(나)</span>' : '';
 
           rankItem.innerHTML = `<span>${medal} ${r.uid}${meTag}${surviveTag}</span> <span style="color:#3498db;">${r.score}점</span>`;
           box.appendChild(rankItem);
@@ -1641,186 +1642,172 @@ mapContainer.addEventListener('click', (e) => {
     }
 
     // 💡 [v2.0 업데이트] 로비 및 방 생성 시스템
-async function initSystem() {
-  const urlParams = new URLSearchParams(window.location.search);
-  currentRoomId = urlParams.get('room');
-  const isSeekMode = urlParams.get('mode') === 'seek';
+    async function initSystem() {
+      const urlParams = new URLSearchParams(window.location.search);
+      currentRoomId = urlParams.get('room');
+      const isSeekMode = urlParams.get('mode') === 'seek';
 
-  // 1. 방 링크를 타고 바로 들어온 경우 (로비에서 닉네임만 입력받고 바로 입장)
-  if (currentRoomId) {
-    document.getElementById('public-room-list').style.display = 'none'; // 링크 접속자는 방 목록 숨김
-    document.querySelector('.lobby-box button').innerText = "이 방에 입장하기";
-    window.createRoom = async () => {
+      // 1. 방 링크를 타고 바로 들어온 경우 (로비에서 닉네임만 입력받고 바로 입장)
+      if (currentRoomId) {
+        document.getElementById('public-room-list').style.display = 'none'; 
+        document.querySelector('.lobby-box button').innerText = "이 방에 입장하기";
+        window.createRoom = () => {
+          const nick = document.getElementById('nickname-input').value.trim();
+          if (!nick) return showGameAlert("닉네임을 입력해주세요!");
+          myUid = nick;
+          window.currentRound = 1;
+          enterMoveMode(); 
+        };
+        return; 
+      }
+
+      // 2. 그냥 홈페이지에 접속한 경우
+      if (db) {
+        db.ref('rooms').on('value', snap => {
+          const rooms = snap.val() || {};
+          const listBox = document.getElementById('public-room-list');
+          listBox.innerHTML = "";
+          let hasRoom = false;
+
+          for (const [roomId, data] of Object.entries(rooms)) {
+            if (data.status === 'waiting') {
+              hasRoom = true;
+              const currentPlayers = data.list ? data.list.length : 0;
+              const item = document.createElement('div');
+              item.className = 'room-item';
+              item.innerHTML = `
+                <span>🏠 ${data.hostName}님의 방 <span style="color:#f1c40f;">(${currentPlayers}/9)</span></span>
+                <button onclick="window.joinRoom('${roomId}')">입장</button>
+              `;
+              listBox.appendChild(item);
+            }
+          }
+          if (!hasRoom) listBox.innerHTML = '<div style="text-align:center; color:#777; margin-top:50px;">현재 대기 중인 방이 없습니다.</div>';
+        });
+      }
+    }
+
+    // ==========================================
+    // 💡 방 만들기 & 3라운드 제어 통합 시스템
+    // ==========================================
+
+    window.currentRound = window.currentRound || 1;
+
+    window.createRoom = () => {
       const nick = document.getElementById('nickname-input').value.trim();
       if (!nick) return showGameAlert("닉네임을 입력해주세요!");
       myUid = nick;
-      document.getElementById('lobby-overlay').style.display = 'none';
-      if (isSeekMode) await initSeeker(currentRoomId);
-      else await initJoinHider(currentRoomId);
+
+      currentRoomId = Math.random().toString(36).substr(2, 6);
+      localStorage.setItem('isHost_' + currentRoomId, 'true'); 
+      currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
+      window.currentRound = 1; 
+      
+      if (db) {
+        db.ref('rooms/' + currentRoomId).set({
+          hostName: myUid,
+          status: 'waiting',
+          mapIndex: currentMapIndex,
+          round: 1 
+        });
+      }
+
+      enterMoveMode();
     };
-    return; // 아래 로비 리스트 로딩 무시
-  }
 
-  // 2. 그냥 홈페이지에 접속한 경우 (로비 화면 표시 & 방 목록 불러오기)
-  if (db) {
-    db.ref('rooms').on('value', snap => {
-      const rooms = snap.val() || {};
-      const listBox = document.getElementById('public-room-list');
-      listBox.innerHTML = "";
-      let hasRoom = false;
-
-      for (const [roomId, data] of Object.entries(rooms)) {
-        // 대기 중(waiting)인 방만 보여줌
-        if (data.status === 'waiting') {
-          hasRoom = true;
-          const currentPlayers = data.list ? data.list.length : 0;
-          const item = document.createElement('div');
-          item.className = 'room-item';
-          item.innerHTML = `
-            <span>🏠 ${data.hostName}님의 방 <span style="color:#f1c40f;">(${currentPlayers}/9)</span></span>
-            <button onclick="window.joinRoom('${roomId}')">입장</button>
-          `;
-          listBox.appendChild(item);
-        }
-      }
-      if (!hasRoom) listBox.innerHTML = '<div style="text-align:center; color:#777; margin-top:50px;">현재 대기 중인 방이 없습니다.</div>';
-    });
-  }
-}
-
-// ==========================================
-// 💡 방 만들기 & 3라운드 제어 통합 시스템
-// ==========================================
-
-// 💡 전역 변수 안전 장치 (라운드 기록용)
-window.currentRound = window.currentRound || 1;
-
-// 💡 방장이 새 방을 파는 함수
-window.createRoom = () => {
-  const nick = document.getElementById('nickname-input').value.trim();
-  if (!nick) return showGameAlert("닉네임을 입력해주세요!");
-  myUid = nick;
-
-  currentRoomId = Math.random().toString(36).substr(2, 6);
-  localStorage.setItem('isHost_' + currentRoomId, 'true'); 
-  currentMapIndex = Math.floor(Math.random() * mapGenerators.length);
-  window.currentRound = 1; // 라운드 초기화
-  
-  if (db) {
-    // 💡 DB에 방 정보 등록 (상태: waiting)
-    db.ref('rooms/' + currentRoomId).set({
-      hostName: myUid,
-      status: 'waiting',
-      mapIndex: currentMapIndex,
-      round: 1 // DB에도 라운드 1 명시!
-    });
-  }
-
-  enterMoveMode();
-};
-
-// 💡 공개 로비에서 다른 방에 들어가는 함수
-window.joinRoom = (roomId) => {
-  const nick = document.getElementById('nickname-input').value.trim();
-  if (!nick) return showGameAlert("닉네임을 입력해주세요!");
-  myUid = nick;
-  
-  currentRoomId = roomId;
-  window.currentRound = 1;
-  enterMoveMode();
-};
-
-// 💡 공통: 닉네임 설정 후 움직임 모드로 진입
-function enterMoveMode() {
-  // 라운드 변경 감지기 작동 (함수가 있으면 실행)
-  if (typeof listenForRoundChange === 'function') listenForRoundChange();
-
-  document.getElementById('lobby-overlay').style.display = 'none';
-  existingHiders = [];
-  mode = 'move'; 
-  renderMap();
-  
-  pWidth = 120; pHeight = 60;
-  pX = Math.round(scrollWrapper.clientWidth / 2); 
-  pY = Math.round(scrollWrapper.clientHeight / 2); 
-  
-  document.getElementById('ui-move').style.display = 'flex';
-  
-  // 💡 플레이어 다시 보이게 셋팅 (매우 중요)
-  const lp = document.getElementById('local-player');
-  lp.style.display = 'flex';
-  lp.style.width = `${pWidth}px`; 
-  lp.style.height = `${pHeight}px`;
-  
-  if (localStorage.getItem('isHost_' + currentRoomId) === 'true') {
-    document.getElementById('btn-upload-map').style.display = 'inline-block';
-  }
-
-  if (localStorage.getItem('isHost_' + currentRoomId) !== 'true') {
-     initJoinHider(currentRoomId); 
-  } else {
-     gameLoop(); 
-  }
-}
-
-// 💡 방장이 다음 라운드 시작을 누를 때 (DB 초기화)
-function startNextRound() {
-  if (!db) return;
-  const nextMapIndex = Math.floor(Math.random() * mapGenerators.length);
-  window.currentRound++;
-  const updates = {
-    'status': 'waiting',
-    'mapIndex': nextMapIndex,
-    'round': window.currentRound,
-    'list': null,    // 숨은 유저 위치 초기화
-    'caught': null,  // 잡힌 기록 초기화
-    'ready': null,   // 레디 상태 초기화
-    'killLogs': null // 킬로그 초기화
-  };
-  db.ref('rooms/' + currentRoomId).update(updates);
-}
-
-// 💡 🌟[매우 중요]🌟 모두가 라운드 변경 신호를 감지하고 화면을 리셋하는 리스너!
-function listenForRoundChange() {
-  if (!db || !currentRoomId) return;
-  db.ref('rooms/' + currentRoomId + '/round').on('value', snap => {
-    const r = snap.val();
-    if (r && r > window.currentRound) {
-      window.currentRound = r; // 내 라운드 동기화
-      mode = 'move';
-      isReady = false;
+    window.joinRoom = (roomId) => {
+      const nick = document.getElementById('nickname-input').value.trim();
+      if (!nick) return showGameAlert("닉네임을 입력해주세요!");
+      myUid = nick;
       
-      const btnSeek = document.getElementById('btn-start-seek');
-      if(btnSeek) {
-        btnSeek.innerText = '✔️ 준비 (레디)';
-        btnSeek.style.background = '#e74c3c';
-      }
+      currentRoomId = roomId;
+      window.currentRound = 1;
+      enterMoveMode();
+    };
+
+    function enterMoveMode() {
+      if (typeof listenForRoundChange === 'function') listenForRoundChange();
+
+      document.getElementById('lobby-overlay').style.display = 'none';
+      existingHiders = [];
+      mode = 'move'; 
+      renderMap();
       
-      document.getElementById('ui-gameover').style.display = 'none';
-      if(document.getElementById('wait-msg')) document.getElementById('wait-msg').remove();
+      pWidth = 120; pHeight = 60;
+      pX = Math.round(scrollWrapper.clientWidth / 2); 
+      pY = Math.round(scrollWrapper.clientHeight / 2); 
       
-      // 맵 위에 남아있던 잡힌 자국, 텍스트 등 싹쓸이 대청소
-      const targets = document.querySelectorAll('.target-obj, .jelly-busted, .floating-text, .combo-text');
-      targets.forEach(el => el.remove());
+      document.getElementById('ui-move').style.display = 'flex';
       
-      localStorage.removeItem('hidden_' + currentRoomId);
-      
-      // 내 위장 풀고 원상복구
       const lp = document.getElementById('local-player');
       lp.style.display = 'flex';
-      lp.classList.remove('copied');
-      lp.style.backgroundImage = 'none';
-      lp.style.opacity = 1;
+      lp.style.width = `${pWidth}px`; 
+      lp.style.height = `${pHeight}px`;
       
-      // 새 맵 번호 불러와서 게임 시작
-      db.ref('rooms/' + currentRoomId + '/mapIndex').once('value').then(msnap => {
-        currentMapIndex = msnap.val() || 0;
-        enterMoveMode(); 
-        showGameAlert(`🚀 라운드 ${window.currentRound} 시작!<br><span style='font-size:16px; color:#ddd;'>새로운 맵에서 위장하세요!</span>`);
+      if (localStorage.getItem('isHost_' + currentRoomId) === 'true') {
+        document.getElementById('btn-upload-map').style.display = 'inline-block';
+      }
+
+      if (localStorage.getItem('isHost_' + currentRoomId) !== 'true') {
+         initJoinHider(currentRoomId); 
+      } else {
+         gameLoop(); 
+      }
+    }
+
+    function startNextRound() {
+      if (!db) return;
+      const nextMapIndex = Math.floor(Math.random() * mapGenerators.length);
+      window.currentRound++;
+      const updates = {
+        'status': 'waiting',
+        'mapIndex': nextMapIndex,
+        'round': window.currentRound,
+        'list': null,    
+        'caught': null,  
+        'ready': null,   
+        'killLogs': null 
+      };
+      db.ref('rooms/' + currentRoomId).update(updates);
+    }
+
+    function listenForRoundChange() {
+      if (!db || !currentRoomId) return;
+      db.ref('rooms/' + currentRoomId + '/round').on('value', snap => {
+        const r = snap.val();
+        if (r && r > window.currentRound) {
+          window.currentRound = r; 
+          mode = 'move';
+          isReady = false;
+          
+          const btnSeek = document.getElementById('btn-start-seek');
+          if(btnSeek) {
+            btnSeek.innerText = '✔️ 준비 (레디)';
+            btnSeek.style.background = '#e74c3c';
+          }
+          
+          document.getElementById('ui-gameover').style.display = 'none';
+          if(document.getElementById('wait-msg')) document.getElementById('wait-msg').remove();
+          
+          const targets = document.querySelectorAll('.target-obj, .jelly-busted, .floating-text, .combo-text');
+          targets.forEach(el => el.remove());
+          
+          localStorage.removeItem('hidden_' + currentRoomId);
+          
+          const lp = document.getElementById('local-player');
+          lp.style.display = 'flex';
+          lp.classList.remove('copied');
+          lp.style.backgroundImage = 'none';
+          lp.style.opacity = 1;
+          
+          db.ref('rooms/' + currentRoomId + '/mapIndex').once('value').then(msnap => {
+            currentMapIndex = msnap.val() || 0;
+            enterMoveMode(); 
+            showGameAlert(`🚀 라운드 ${window.currentRound} 시작!<br><span style='font-size:16px; color:#ddd;'>새로운 맵에서 위장하세요!</span>`);
+          });
+        }
       });
     }
-  });
-}
 
     async function initJoinHider(id) {
       let roomData = null;
@@ -1834,20 +1821,18 @@ function listenForRoundChange() {
 
       if (roomData) {
         if (db) {
-          // [바꿀 코드 - 중복 방지 조건 추가 및 함수 교체]
-db.ref('rooms/' + id + '/status').on('value', snap => {
-  if (snap.val() === 'seek' && mode !== 'seek') { // 💡 이미 술래 모드면 무시
-    showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
-      window.transitionToSeekMode(); // 💡 새로고침 없이 바로 전환!
-    }, 2000); 
-  }
-});
+          db.ref('rooms/' + id + '/status').on('value', snap => {
+            if (snap.val() === 'seek' && mode !== 'seek') { 
+              showGameAlert("🚨 게임 시작!<br>모두 색출 작전에 투입됩니다!", () => {
+                window.transitionToSeekMode(); 
+              }, 2000); 
+            }
+          });
         }
 
         currentMapIndex = roomData.mapIndex;
         existingHiders = roomData.list || [];
         
-        // 💡 방장이면 사진 업로드 버튼 보여주기
         if (localStorage.getItem('isHost_' + id) === 'true') {
           document.getElementById('btn-upload-map').style.display = 'inline-block';
         }
@@ -1868,11 +1853,10 @@ db.ref('rooms/' + id + '/status').on('value', snap => {
           return; 
         }
         
-        // [바꿀 코드 - DB 상태만 'seek'로 바꾸면 위 3-1에서 알아서 팝업 띄우고 전환됨]
-if (existingHiders.length >= 9) {
-  if (db) db.ref('rooms/' + id + '/status').set('seek');
-  return;
-}
+        if (existingHiders.length >= 9) {
+          if (db) db.ref('rooms/' + id + '/status').set('seek');
+          return;
+        }
 
         mode = 'move';
         pWidth = 120; pHeight = 60;
@@ -1883,15 +1867,14 @@ if (existingHiders.length >= 9) {
         gameLoop();
       } else {
         showGameAlert("❌ 데이터를 찾을 수 없습니다.", () => {
-  isIntentional = true;
-  location.href = location.pathname;
-}, 1500);
+          isIntentional = true;
+          location.href = location.pathname;
+        }, 1500);
       }
     }
 
     window.addEventListener('touchstart', initAudio, { once: true });
     window.addEventListener('click', initAudio, { once: true });
-    // 💡 모바일 꾹 누르기(우클릭 메뉴) 방지
     window.addEventListener('contextmenu', e => e.preventDefault());
 
     initSystem();
