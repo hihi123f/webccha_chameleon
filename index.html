@@ -945,8 +945,8 @@
 
     function getDoodlePos(e) {
       const mapRect = mapContainer.getBoundingClientRect();
-      const cX = (e.touches ? e.touches[0].clientX : e.clientX) - mapRect.left;
-      const cY = (e.touches ? e.touches[0].clientY : e.clientY) - mapRect.top;
+      const cX = ((e.touches ? e.touches[0].clientX : e.clientX) - mapRect.left) / window.currentZoom;
+      const cY = ((e.touches ? e.touches[0].clientY : e.clientY) - mapRect.top) / window.currentZoom;
       const dx = cX - pX; const dy = cY - pY;
       const rad = -rotation * (Math.PI / 180);
       const rx = dx * Math.cos(rad) - dy * Math.sin(rad);
@@ -956,7 +956,11 @@
 
     function extractColor(clientX, clientY) {
       const mapRect = mapContainer.getBoundingClientRect();
-      const cX = clientX - mapRect.left; const cY = clientY - mapRect.top;
+      
+      // 💡 [수정됨] 화면이 확대/축소(Zoom) 된 만큼 터치 좌표도 보정해 줍니다!
+      const cX = (clientX - mapRect.left) / window.currentZoom; 
+      const cY = (clientY - mapRect.top) / window.currentZoom;
+      
       let px = Math.max(0, Math.min(bgCanvas.width - 1, cX * dpr));
       let py = Math.max(0, Math.min(bgCanvas.height - 1, cY * dpr));
       const pixel = bgCtx.getImageData(px, py, 1, 1).data;
@@ -1031,8 +1035,8 @@
     function handleResizeMove(clientX, clientY) {
       if (!isResizing || mode !== 'move') return;
       const rect = mapContainer.getBoundingClientRect();
-      const currentMouseX = clientX - rect.left;
-      const currentMouseY = clientY - rect.top; 
+      const currentMouseX = (clientX - rect.left) / window.currentZoom;
+      const currentMouseY = (clientY - rect.top) / window.currentZoom; 
       pWidth = Math.round(Math.max(40, Math.min(300, (currentMouseX - pX) * 2)));
       pHeight = Math.round(Math.max(40, Math.min(300, (currentMouseY - pY) * 2)));
       localPlayer.style.width = `${pWidth}px`; localPlayer.style.height = `${pHeight}px`;
@@ -1461,8 +1465,8 @@ mapContainer.addEventListener('click', (e) => {
   const now = Date.now();
 
   const rect = mapContainer.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const clickY = e.clientY - rect.top;
+  const clickX = (e.clientX - rect.left) / window.currentZoom;
+  const clickY = (e.clientY - rect.top) / window.currentZoom;
 
   let hitTargetData = null;
   let minDistToAny = Infinity;
@@ -1640,35 +1644,81 @@ mapContainer.addEventListener('click', (e) => {
 
     function renderLeaderboard() {
       if (!db) return;
+      
+      db.ref('rooms/' + currentRoomId + '/results').off('value'); // 💡 통신 찌꺼기 차단!
       db.ref('rooms/' + currentRoomId + '/results').on('value', snap => {
-        const results = snap.val() || {};
-        const list = Object.values(results).sort((a, b) => b.score - a.score);
-
+        const results = snap.val();
         const box = document.getElementById('leaderboard-box');
-        box.innerHTML = "";
+        box.innerHTML = ""; // 기존 내용 비우기
 
+        // 💡 1. 데이터가 아예 없는 경우 방어
+        if (!results) {
+          box.innerHTML = "<div style='text-align:center; color:#aaa; margin-top:20px;'>점수 집계 중...</div>";
+          return;
+        }
+
+        // 💡 2. DB가 배열로 주든, 객체로 주든 안전하게 배열로 통일 + 찌꺼기(null) 제거
+        let list = [];
+        if (Array.isArray(results)) {
+            list = results.filter(x => x !== null && typeof x === 'object');
+        } else {
+            list = Object.values(results).filter(x => x !== null && typeof x === 'object');
+        }
+
+        // 💡 3. 점수가 비어있는 유저 때문에 에러가 나지 않도록 0점 처리 후 정렬
+        list.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+        if (list.length === 0) {
+          box.innerHTML = "<div style='text-align:center; color:#aaa; margin-top:20px;'>결과 데이터가 없습니다.</div>";
+          return;
+        }
+
+        // 💡 4. 안전하게 순위 리스트 출력
         list.forEach((r, idx) => {
           const rankItem = document.createElement('div');
           rankItem.className = 'rank-item';
           
           let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '🔹'));
           let surviveTag = r.survived ? ' <span style="color:#2ecc71; font-size:12px;">[생존]</span>' : (r.isHider ? ' <span style="color:#e74c3c; font-size:12px;">[검거됨]</span>' : '');
+          
           let meTag = (r.uid === myUid) ? ' <span style="color:#f1c40f;">(나)</span>' : '';
 
-          rankItem.innerHTML = `<span>${medal} ${r.uid}${meTag}${surviveTag}</span> <span style="color:#3498db;">${r.score}점</span>`;
+          rankItem.innerHTML = `<span>${medal} ${r.uid || '알수없음'}${meTag}${surviveTag}</span> <span style="color:#3498db;">${r.score || 0}점</span>`;
           box.appendChild(rankItem);
         });
       });
     }
 
+    // 💡 맵 확대/축소(줌) 엔진
+    window.currentZoom = window.currentZoom || 1;
+    window.changeZoom = (val) => {
+      window.currentZoom += val;
+      if (window.currentZoom < 0.4) window.currentZoom = 0.4;
+      if (window.currentZoom > 3.0) window.currentZoom = 3.0;
+      
+      const mc = document.getElementById('map-container');
+      mc.style.transformOrigin = 'top left';
+      mc.style.transform = `scale(${window.currentZoom})`;
+      
+      mc.style.marginBottom = `${(window.currentZoom - 1) * MAP_HEIGHT}px`;
+      mc.style.marginRight = `${(window.currentZoom - 1) * MAP_WIDTH}px`;
+    };
+
     let isJoystickActive = false; let joyBase = document.getElementById('joy-base');
     let joyKnob = document.getElementById('joy-knob'); let joyStart = { x: 0, y: 0 };
     const MAX_JOY_RADIUS = 40; const JOY_SPEED = 1.2; 
-    
+    let lastPinchDist = null; // 💡 두 손가락 거리 추적용
+
     scrollWrapper.addEventListener('touchstart', (e) => {
       if(mode !== 'move' && mode !== 'edit') return;
       if(e.target.closest('#resize-handle') || e.target.closest('#mobile-action-btn') || e.target.closest('#doodle-canvas')) return;
       
+      // 💡 [핵심] 두 손가락이 화면에 닿으면 줌 모드 시작!
+      if (e.touches.length === 2) {
+        lastPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        return;
+      }
+
       const touch = e.touches[0];
       if (touch.clientX < window.innerWidth / 2) {
         isJoystickActive = true;
@@ -1680,6 +1730,16 @@ mapContainer.addEventListener('click', (e) => {
     }, {passive: false});
 
     window.addEventListener('touchmove', (e) => {
+      // 💡 [핵심] 두 손가락을 벌리거나 오므릴 때 부드럽게 줌 실행!
+      if (e.touches.length === 2 && lastPinchDist !== null) {
+        e.preventDefault(); 
+        const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        const delta = (currentDist - lastPinchDist) * 0.005; // 줌 속도 조절 (0.005)
+        window.changeZoom(delta);
+        lastPinchDist = currentDist;
+        return;
+      }
+
       if(!isJoystickActive) return;
       e.preventDefault();
       const touch = e.touches[0];
@@ -1690,8 +1750,15 @@ mapContainer.addEventListener('click', (e) => {
       vX = (dx / MAX_JOY_RADIUS) * JOY_SPEED; vY = (dy / MAX_JOY_RADIUS) * JOY_SPEED;
     }, {passive: false});
 
-    function endJoy() {
-      if(isJoystickActive) { isJoystickActive = false; joyBase.style.display = 'none'; vX = 0; vY = 0; }
+    function endJoy(e) {
+      // 💡 손가락 하나라도 떼면 줌 모드 해제
+      if (e.touches && e.touches.length < 2) {
+        lastPinchDist = null;
+      }
+
+      if(isJoystickActive && (!e.touches || e.touches.length === 0)) {
+        isJoystickActive = false; joyBase.style.display = 'none'; vX = 0; vY = 0;
+      }
     }
     window.addEventListener('touchend', endJoy); window.addEventListener('touchcancel', endJoy);
 
