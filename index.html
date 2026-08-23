@@ -276,14 +276,29 @@
   <div id="mobile-action-btn">📸</div>
 
   <script>
+    // 💡 기본 alert를 대체하는 커스텀 팝업 함수 (터치 시 즉시 닫기 적용!)
+    let alertTimeout = null; // 타이머 겹침 방지용 변수
+    
     function showGameAlert(msg, callback = null, duration = 2500) {
       const overlay = document.getElementById('game-alert-overlay');
       document.getElementById('game-alert-message').innerHTML = msg;
       overlay.style.display = 'flex';
-      setTimeout(() => {
+      
+      // 기존에 돌고 있던 타이머가 있다면 초기화
+      if (alertTimeout) clearTimeout(alertTimeout);
+      
+      // 알림창을 닫고 콜백(다음 행동)을 실행하는 함수
+      const closeAlert = () => {
         overlay.style.display = 'none';
-        if (callback) callback(); 
-      }, duration);
+        overlay.onclick = null; // 클릭 이벤트 해제
+        if (callback) callback();
+      };
+
+      // 💡 [핵심] 화면을 클릭하거나 터치하면 기다리지 않고 즉시 닫힘!
+      overlay.onclick = closeAlert;
+
+      // 가만히 둬도 지정된 시간(duration) 뒤에 자동으로 닫힘
+      alertTimeout = setTimeout(closeAlert, duration);
     }
 
     const firebaseConfig = {
