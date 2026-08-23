@@ -107,7 +107,11 @@
     @keyframes tremble { 0%, 100% { margin-left: -3px; } 50% { margin-left: 3px; } }
 
     .shake-screen { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
-    @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, -4px, 0); } }
+    @keyframes shake { 
+      10%, 90% { transform: scale(var(--current-zoom, 1)) translate3d(-4px, 0, 0); } 
+      20%, 80% { transform: scale(var(--current-zoom, 1)) translate3d(4px, 0, 0); } 
+      30%, 50%, 70% { transform: scale(var(--current-zoom, 1)) translate3d(-8px, -4px, 0); } 
+    }
     
     .floating-text { position: absolute; font-weight: 900; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: floatUp 1.5s ease-out forwards; z-index: 100; color: white; white-space: nowrap; }
     @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
@@ -1690,6 +1694,7 @@ mapContainer.addEventListener('click', (e) => {
     }
 
     // 💡 맵 확대/축소(줌) 엔진
+   // 💡 맵 확대/축소(줌) 엔진
     window.currentZoom = window.currentZoom || 1;
     window.changeZoom = (val) => {
       window.currentZoom += val;
@@ -1699,6 +1704,9 @@ mapContainer.addEventListener('click', (e) => {
       const mc = document.getElementById('map-container');
       mc.style.transformOrigin = 'top left';
       mc.style.transform = `scale(${window.currentZoom})`;
+      
+      // 💡 [핵심 추가] CSS 흔들림 애니메이션이 현재 줌 비율을 알 수 있도록 변수 전달!
+      mc.style.setProperty('--current-zoom', window.currentZoom); 
       
       mc.style.marginBottom = `${(window.currentZoom - 1) * MAP_HEIGHT}px`;
       mc.style.marginRight = `${(window.currentZoom - 1) * MAP_WIDTH}px`;
