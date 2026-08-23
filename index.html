@@ -448,8 +448,10 @@
 
     const MAP_WIDTH = 1000; 
     const MAP_HEIGHT = 5000; 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2); // 💡 최대 해상도를 2배수로 제한
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    
+    // 💡 [핵심 렉 완화] 모바일에서는 캔버스 해상도 배율을 강제로 1배로 낮춰서 메모리 폭발(렉)을 완벽 방지합니다!
+    const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 2);
     
     const actionBtn = document.getElementById('mobile-action-btn');
     if (isMobile) {
@@ -1316,10 +1318,23 @@
           }
         });
 
+        // [이 부분을 찾아서 아래 코드로 덮어씌우세요!]
         if (db) {
           db.ref('rooms/' + id + '/killLogs').off();
           db.ref('rooms/' + id + '/caught').off();
           db.ref('rooms/' + id + '/trolls').off();
+          db.ref('rooms/' + id + '/status').off(); // 💡 상태 리스너 대청소
+
+          // 💡 [핵심 추가] 누군가 타겟을 다 찾으면 게임 강제 종료 신호 수신!
+          db.ref('rooms/' + id + '/status').on('value', snap => {
+            if (snap.val() === 'gameover' && mode === 'seek') {
+              clearInterval(timerInterval);
+              const remaining = activeTargets.filter(t => !t.caught && t.uid !== myUid).length;
+              if (remaining > 0) {
+                triggerGameOver("🏁 다른 사람이 1등으로 다 찾았습니다!");
+              }
+            }
+          });
 
           db.ref('rooms/' + id + '/killLogs').on('child_added', snap => {
             const log = snap.val();
@@ -1339,7 +1354,6 @@
             if (hitTarget && !hitTarget.caught) {
               hitTarget.caught = true; 
               
-              // 💡 캔버스를 안 쓰므로 화면에서 HTML 요소를 싹 지워버립니다.
               const targetEl = document.getElementById(`target-${caughtDbKey}`);
               if (targetEl) targetEl.remove();
               
@@ -1356,7 +1370,9 @@
 
               if (remaining === 0) {
                 clearInterval(timerInterval);
-                triggerGameOver("🎉 모든 타겟 색출 완료!");
+                // 💡 [핵심 추가] 내가 1등으로 다 찾았으면 남들도 모두 게임 종료시킴!
+                db.ref('rooms/' + id + '/status').set('gameover');
+                triggerGameOver("🎉 1등으로 모든 타겟 색출 완료!");
               }
             }
           });
@@ -1760,12 +1776,37 @@ mapContainer.addEventListener('click', (e) => {
     };
 
     // 💡 공통: 닉네임 설정 후 움직임 모드로 진입
+// 💡 공통: 닉네임 설정 후 움직임 모드로 진입
 function enterMoveMode() {
   if (typeof listenForRoundChange === 'function') listenForRoundChange();
 
   document.getElementById('lobby-overlay').style.display = 'none';
   existingHiders = [];
   mode = 'move'; 
+
+  // 💡 [완벽 초기화 추가] 무조건 내 캐릭터의 상태, 스캔된 이미지, 그림을 싹 지웁니다!
+  const lp = document.getElementById('local-player');
+  lp.style.display = 'flex';
+  lp.classList.remove('copied', 'shape-circle', 'shape-pill', 'shape-rhombus', 'shape-rect');
+  lp.style.backgroundImage = 'none';
+  lp.style.opacity = 1;
+  lp.style.transform = 'translate(-50%, -50%) rotate(0deg)'; 
+  lp.style.setProperty('--rot', '0deg');
+  
+  const doodleCanvas = document.getElementById('doodle-canvas');
+  const doodleCtx = doodleCanvas.getContext('2d');
+  doodleCanvas.style.display = 'none';
+  doodleCtx.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+  currentBgDataUrl = "";
+  currentShape = 'rect';
+  rotation = 0;
+  if (document.getElementById('rot-slider')) document.getElementById('rot-slider').value = 0;
+  if (document.getElementById('opacity-slider')) document.getElementById('opacity-slider').value = 1;
+
+  // 💡 맵 위에 남은 이전 라운드 찌꺼기 타겟들도 확실하게 청소
+  const targets = document.querySelectorAll('.target-obj, .jelly-busted, .floating-text, .combo-text');
+  targets.forEach(el => el.remove());
+
   renderMap();
   
   pWidth = 120; pHeight = 60;
@@ -1773,9 +1814,6 @@ function enterMoveMode() {
   pY = Math.round(scrollWrapper.clientHeight / 2); 
   
   document.getElementById('ui-move').style.display = 'flex';
-  
-  const lp = document.getElementById('local-player');
-  lp.style.display = 'flex';
   lp.style.width = `${pWidth}px`; 
   lp.style.height = `${pHeight}px`;
   
@@ -1783,7 +1821,6 @@ function enterMoveMode() {
     document.getElementById('btn-upload-map').style.display = 'inline-block';
   }
 
-  // 💡 [버그 수정] 2라운드 진입 시 모바일 스캔 버튼 원상 복구!
   if (isMobile) {
     const mBtn = document.getElementById('mobile-action-btn');
     mBtn.style.display = 'flex';
@@ -1791,10 +1828,15 @@ function enterMoveMode() {
     mBtn.style.background = '#3498db';
   }
 
+  if (db && myUid) {
+    const myPlayerRef = db.ref('rooms/' + currentRoomId + '/players/' + myUid);
+    myPlayerRef.set(true);
+    myPlayerRef.onDisconnect().remove(); 
+  }
+
   if (localStorage.getItem('isHost_' + currentRoomId) !== 'true') {
      initJoinHider(currentRoomId); 
   } else {
-     // 💡 [긴급 패치] 방장 전용 '게임 시작' 감지기
      if (db) {
        db.ref('rooms/' + currentRoomId + '/status').off('value');
        db.ref('rooms/' + currentRoomId + '/status').on('value', snap => {
