@@ -446,8 +446,8 @@
       seekLoopId = requestAnimationFrame(seekLoop);
     }
 
-    const MAP_WIDTH = 1000; 
-    const MAP_HEIGHT = 5000; 
+    let MAP_WIDTH = 1000; 
+    let MAP_HEIGHT = 5000; 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     
     // 💡 [핵심 렉 완화] 모바일에서는 캔버스 해상도 배율을 강제로 1배로 낮춰서 메모리 폭발(렉)을 완벽 방지합니다!
@@ -808,6 +808,16 @@
     ];
 
     function renderMap() {
+      if (customMapBase64) {
+        applyCustomMap(customMapBase64);
+        return;
+      }
+      // 💡 일반 텍스트 맵일 경우 기본 사이즈(1000x5000)로 원상 복구
+      MAP_WIDTH = 1000;
+      MAP_HEIGHT = 5000;
+      mapContainer.style.width = `${MAP_WIDTH}px`;
+      mapContainer.style.height = `${MAP_HEIGHT}px`;
+
       bgCanvas.width = MAP_WIDTH * dpr; 
       bgCanvas.height = MAP_HEIGHT * dpr; 
       bgCtx.scale(dpr, dpr); 
@@ -816,6 +826,9 @@
     }
     window.addEventListener('resize', renderMap);
 
+    // ==========================================
+    // 💡 이미지 업로드 및 압축 로직 (커스텀 맵)
+    // ==========================================
     window.loadCustomMap = (event) => {
       const file = event.target.files[0];
       if (!file) return;
@@ -826,14 +839,19 @@
         img.src = e.target.result;
         img.onload = () => {
           const tempCanvas = document.createElement('canvas');
-          const maxW = 1080;
-          const scale = maxW / img.width;
-          tempCanvas.width = maxW;
+          
+          // 💡 [크기 최적화] 사진 너비를 모바일에 딱 맞는 최대 800px로 제한합니다!
+          // (단, 작은 사진은 억지로 1000px로 키워서 깨지는 현상을 방지함)
+          const maxW = 800; 
+          let scale = 1;
+          if (img.width > maxW) scale = maxW / img.width;
+          
+          tempCanvas.width = img.width * scale;
           tempCanvas.height = img.height * scale;
           const tCtx = tempCanvas.getContext('2d');
           tCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
           
-          customMapBase64 = tempCanvas.toDataURL('image/jpeg', 0.6);
+          customMapBase64 = tempCanvas.toDataURL('image/jpeg', 0.7);
           
           if (db) db.ref('rooms/' + currentRoomId + '/customMap').set(customMapBase64);
           applyCustomMap(customMapBase64);
@@ -843,13 +861,25 @@
     };
 
     function applyCustomMap(base64Image) {
+      customMapBase64 = base64Image; 
       const img = new Image();
       img.src = base64Image;
       img.onload = () => {
-        const ratio = img.height / img.width;
+        // 💡 [핵심] 억지로 1000px로 뻥튀기하지 않고, 사진의 실제 픽셀 크기에 맞춰서 게임 맵 크기를 유동적으로 셋팅!
+        MAP_WIDTH = img.width;
+        MAP_HEIGHT = img.height;
+        
+        mapContainer.style.width = `${MAP_WIDTH}px`;
+        mapContainer.style.height = `${MAP_HEIGHT}px`;
+        
         bgCanvas.width = MAP_WIDTH * dpr;
-        bgCanvas.height = (MAP_WIDTH * ratio) * dpr;
-        mapContainer.style.height = `${MAP_WIDTH * ratio}px`;
+        bgCanvas.height = MAP_HEIGHT * dpr;
+        
+        const sCanvas = document.getElementById('seek-canvas');
+        if (sCanvas) {
+          sCanvas.width = MAP_WIDTH * dpr;
+          sCanvas.height = MAP_HEIGHT * dpr;
+        }
         
         bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
         bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
